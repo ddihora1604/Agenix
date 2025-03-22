@@ -44,7 +44,7 @@ export default function RootLayout({
             <div className="animate-fade-in">
               <Sidebar />
               <Navbar />
-              <main className="ml-64 pt-16 p-6 lg:p-8">
+              <main className="pt-16 p-6 lg:p-8 ml-20 transition-all duration-300">
                 <div className="max-w-7xl mx-auto animate-slide-up">
                   {children}
                 </div>

@@ -21,9 +21,10 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import AgentCard from './AgentCard';
 import { LucideProps } from 'lucide-react';
-import { X, ArrowRight, RotateCw, CheckCircle2 } from 'lucide-react';
+import { X, ArrowRight, RotateCw, CheckCircle2, Loader2, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { useNotificationStore } from '@/store/notifications';
 import ReactMarkdown from 'react-markdown';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PlaygroundProps {
   selectedWorkflow: string;
@@ -47,15 +48,22 @@ interface AgentResult {
   agentName: string;
   output: string;
   timestamp: string;
+  status: 'idle' | 'processing' | 'completed' | 'error';
 }
 
-interface InputFieldConfig {
+interface PromptTemplate {
+  agentId: string;
+  fields: PromptField[];
+}
+
+interface PromptField {
   name: string;
   label: string;
-  type: string;
+  type: 'text' | 'textarea' | 'select' | 'multiselect';
   required: boolean;
   placeholder: string;
-  isArray?: boolean;
+  options?: string[];
+  description?: string;
 }
 
 const SortableAgentItem = ({ agent, id, onRemove }: { 
@@ -99,19 +107,8 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
   const [isExecuting, setIsExecuting] = useState(false);
   const [showInputForm, setShowInputForm] = useState(false);
   const [results, setResults] = useState<AgentResult[]>([]);
-  const [formState, setFormState] = useState({
-    market: 'B2B SaaS',
-    brand_voice: {
-      tone: 'professional',
-      style: 'technical'
-    },
-    competitors: [''],
-    products: [''],
-    target_audience: '',
-    personas: [''],
-    marketing_channels: [''],
-    pricing_strategy: ''
-  });
+  const [activeTab, setActiveTab] = useState<string>('');
+  const [promptInputs, setPromptInputs] = useState<Record<string, any>>({});
   
   const { setNodeRef: setDroppableRef } = useDroppable({
     id: 'configured-workflow',
@@ -182,50 +179,177 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
     setActiveId(null);
   };
 
-  const handleSubmitInput = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsExecuting(true);
-    addNotification({
-      message: 'Processing workflow...',
-      type: 'info'
-    });
-    
-    // Extract agent IDs in the correct order
-    const agentIds = configuredAgents.map(ca => ca.agent.backendId);
-    
-    try {
-      // Call the API endpoint
-      const response = await fetch('/api/marketing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+  // Get prompt templates for each agent
+  const getPromptTemplates = (): PromptTemplate[] => {
+    return configuredAgents.map(ca => {
+      // Default fields all agents need
+      const commonFields: PromptField[] = [
+        {
+          name: 'market_type',
+          label: 'Market Type',
+          type: 'text',
+          required: true,
+          placeholder: 'e.g., B2B SaaS, Retail, Healthcare',
+          description: 'Type of market the analysis is for'
         },
-        body: JSON.stringify({
-          agentIds,
-          userInputs: formState
-        }),
-      });
+        {
+          name: 'brand_tone',
+          label: 'Brand Tone',
+          type: 'select',
+          required: true,
+          placeholder: 'Select brand tone',
+          options: ['professional', 'casual', 'technical', 'friendly', 'authoritative'],
+          description: 'The tone of voice for your brand'
+        }
+      ];
       
-      const data = await response.json();
+      // Agent-specific fields
+      let agentFields: PromptField[] = [];
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process agents');
+      switch(ca.agent.backendId) {
+        case 'competitor_analysis':
+          agentFields = [
+            {
+              name: 'competitors',
+              label: 'Competitors',
+              type: 'multiselect',
+              required: true,
+              placeholder: 'Add competitor',
+              description: 'List major competitors to analyze'
+            },
+            {
+              name: 'competitor_strengths',
+              label: 'Competitor Strengths to Analyze',
+              type: 'multiselect',
+              required: false,
+              placeholder: 'Add area of strength',
+              options: ['pricing', 'features', 'market share', 'brand reputation', 'customer service'],
+              description: 'Areas of strength to analyze for each competitor'
+            }
+          ];
+          break;
+          
+        case 'product_recommendations':
+          agentFields = [
+            {
+              name: 'products',
+              label: 'Products',
+              type: 'multiselect',
+              required: true,
+              placeholder: 'Add product',
+              description: 'Your current products to analyze'
+            },
+            {
+              name: 'target_market_segments',
+              label: 'Target Market Segments',
+              type: 'multiselect',
+              required: true,
+              placeholder: 'Add market segment',
+              description: 'Market segments you want to target'
+            }
+          ];
+          break;
+          
+        case 'content_creation':
+          agentFields = [
+            {
+              name: 'target_audience',
+              label: 'Target Audience',
+              type: 'text',
+              required: true,
+              placeholder: 'e.g., Tech decision-makers, HR professionals',
+              description: 'Primary audience for your content'
+            },
+            {
+              name: 'content_type',
+              label: 'Content Type',
+              type: 'select',
+              required: true,
+              placeholder: 'Select content type',
+              options: ['blog post', 'social media', 'email campaign', 'white paper', 'case study'],
+              description: 'Type of content to generate'
+            },
+            {
+              name: 'key_message',
+              label: 'Key Message',
+              type: 'textarea',
+              required: true,
+              placeholder: 'Main message you want to convey',
+              description: 'Core message for your content'
+            }
+          ];
+          break;
+          
+        case 'sales_enablement':
+          agentFields = [
+            {
+              name: 'marketing_channels',
+              label: 'Marketing Channels',
+              type: 'multiselect',
+              required: true,
+              placeholder: 'Add channel',
+              options: ['email', 'social media', 'search ads', 'content marketing', 'events'],
+              description: 'Marketing channels you utilize'
+            },
+            {
+              name: 'pricing_strategy',
+              label: 'Pricing Strategy',
+              type: 'select',
+              required: true,
+              placeholder: 'Select pricing strategy',
+              options: ['premium', 'competitive', 'freemium', 'subscription', 'value-based'],
+              description: 'Your current pricing approach'
+            },
+            {
+              name: 'sales_cycle_length',
+              label: 'Sales Cycle Length',
+              type: 'select',
+              required: false,
+              placeholder: 'Select sales cycle length',
+              options: ['short (< 1 month)', 'medium (1-3 months)', 'long (3+ months)'],
+              description: 'Typical length of your sales cycle'
+            }
+          ];
+          break;
+          
+        case 'trend_identification':
+          agentFields = [
+            {
+              name: 'industry_focus',
+              label: 'Industry Focus',
+              type: 'text',
+              required: true,
+              placeholder: 'e.g., Technology, Healthcare, Finance',
+              description: 'Specific industry to analyze'
+            },
+            {
+              name: 'time_horizon',
+              label: 'Time Horizon',
+              type: 'select',
+              required: true,
+              placeholder: 'Select time horizon',
+              options: ['short-term (3-6 months)', 'medium-term (6-12 months)', 'long-term (1-3 years)'],
+              description: 'Time frame for trend analysis'
+            }
+          ];
+          break;
       }
       
-      setResults(data.results);
-      addNotification({
-        message: 'Workflow execution completed successfully',
-        type: 'success'
-      });
-    } catch (error) {
-      console.error('Error executing workflow:', error);
-      addNotification({
-        message: 'Error executing workflow',
-        type: 'error'
-      });
-    } finally {
-      setIsExecuting(false);
-    }
+      return {
+        agentId: ca.agent.backendId,
+        fields: [...commonFields, ...agentFields]
+      };
+    });
+  };
+
+  const handlePromptInputChange = (agentId: string, field: string, value: any) => {
+    setPromptInputs(prev => ({
+      ...prev,
+      [agentId]: {
+        ...(prev[agentId] || {}),
+        [field]: value
+      }
+    }));
   };
 
   const handleLaunchWorkflow = () => {
@@ -237,8 +361,35 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
       return;
     }
     
+    // Initialize the results for each configured agent
+    const initialResults = configuredAgents.map(ca => ({
+      agentId: ca.agent.backendId,
+      agentName: ca.agent.name,
+      output: '',
+      timestamp: new Date().toISOString(),
+      status: 'idle' as const
+    }));
+    
+    setResults(initialResults);
+    setActiveTab(initialResults[0]?.agentId || '');
     setShowInputForm(true);
-    setResults([]);
+    
+    // Initialize prompt inputs if needed
+    const templates = getPromptTemplates();
+    const initialInputs: Record<string, any> = {};
+    
+    templates.forEach(template => {
+      initialInputs[template.agentId] = initialInputs[template.agentId] || {};
+      template.fields.forEach(field => {
+        if (field.type === 'multiselect') {
+          initialInputs[template.agentId][field.name] = initialInputs[template.agentId][field.name] || [''];
+        } else {
+          initialInputs[template.agentId][field.name] = initialInputs[template.agentId][field.name] || '';
+        }
+      });
+    });
+    
+    setPromptInputs(initialInputs);
     
     // Scroll to input form
     setTimeout(() => {
@@ -246,167 +397,114 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
     }, 100);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleExecuteWorkflow = async () => {
+    setIsExecuting(true);
     
-    // Handle nested properties (like brand_voice.tone)
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormState(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormState(prev => ({
-        ...prev,
-        [name]: value
-      }));
+    // Update result status to processing
+    setResults(prev => prev.map(result => ({
+      ...result,
+      status: 'processing'
+    })));
+    
+    // Execute each agent one by one
+    try {
+      // Call the API endpoint with all agent inputs at once
+      const response = await fetch('/api/marketing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentIds: configuredAgents.map(ca => ca.agent.backendId),
+          userInputs: promptInputs
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process agents');
+      }
+      
+      // Update results with API response
+      setResults(data.results);
+      
+      addNotification({
+        message: 'Workflow execution completed successfully',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error executing workflow:', error);
+      
+      // Update status to error for all agents
+      setResults(prev => prev.map(result => ({
+        ...result,
+        status: 'error',
+        output: 'Error processing agent. Please try again.'
+      })));
+      
+      addNotification({
+        message: 'Error executing workflow',
+        type: 'error'
+      });
+    } finally {
+      setIsExecuting(false);
     }
   };
-
-  const handleArrayInputChange = (name: string, index: number, value: string) => {
-    setFormState(prev => {
-      const arr = [...(prev[name as keyof typeof prev] as string[])];
-      arr[index] = value;
-      return {
-        ...prev,
-        [name]: arr
-      };
-    });
-  };
-
-  const addArrayItem = (name: string) => {
-    setFormState(prev => {
-      const arr = [...(prev[name as keyof typeof prev] as string[]), ''];
-      return {
-        ...prev,
-        [name]: arr
-      };
-    });
-  };
-
-  const removeArrayItem = (name: string, index: number) => {
-    setFormState(prev => {
-      const arr = [...(prev[name as keyof typeof prev] as string[])];
-      if (arr.length > 1) {
-        arr.splice(index, 1);
-      } else {
-        arr[0] = '';
-      }
-      return {
-        ...prev,
-        [name]: arr
-      };
-    });
-  };
-
-  // Determine which input fields to show based on the configured agents
-  const getInputFields = (): InputFieldConfig[] => {
-    const baseFields: InputFieldConfig[] = [
-      {
-        name: 'market',
-        label: 'Market Type',
-        type: 'text',
-        required: true,
-        placeholder: 'e.g., B2B SaaS, Retail, Healthcare'
-      },
-      {
-        name: 'brand_voice.tone',
-        label: 'Brand Tone',
-        type: 'text',
-        required: true,
-        placeholder: 'e.g., professional, casual, technical'
-      },
-      {
-        name: 'brand_voice.style',
-        label: 'Brand Style',
-        type: 'text',
-        required: true,
-        placeholder: 'e.g., conversational, formal, direct'
-      }
-    ];
-    
-    const agentSpecificFields: Record<string, InputFieldConfig[]> = {
-      'competitor_analysis': [
-        {
-          name: 'competitors',
-          label: 'Competitors',
-          type: 'text',
-          required: true,
-          placeholder: 'Add competitor',
-          isArray: true
-        }
-      ],
-      'product_recommendations': [
-        {
-          name: 'products',
-          label: 'Products',
-          type: 'text',
-          required: true,
-          placeholder: 'Add product',
-          isArray: true
-        }
-      ],
-      'content_creation': [
-        {
-          name: 'target_audience',
-          label: 'Target Audience',
-          type: 'text',
-          required: true,
-          placeholder: 'e.g., Tech decision-makers, HR professionals'
-        },
-        {
-          name: 'personas',
-          label: 'Target Personas',
-          type: 'text',
-          required: true,
-          placeholder: 'Add persona',
-          isArray: true
-        }
-      ],
-      'sales_enablement': [
-        {
-          name: 'marketing_channels',
-          label: 'Marketing Channels',
-          type: 'text',
-          required: true,
-          placeholder: 'Add channel',
-          isArray: true
-        },
-        {
-          name: 'pricing_strategy',
-          label: 'Pricing Strategy',
-          type: 'text',
-          required: true,
-          placeholder: 'e.g., Freemium, Premium, Subscription'
-        }
-      ]
-    };
-    
-    // Add fields based on configured agents
-    let fields = [...baseFields];
-    
-    configuredAgents.forEach(ca => {
-      const backendId = ca.agent.backendId;
-      const agentFields = agentSpecificFields[backendId];
+  
+  const handleAddMultiselectItem = (agentId: string, field: string) => {
+    setPromptInputs(prev => {
+      const agentInputs = prev[agentId] || {};
+      const currentValues = agentInputs[field] || [''];
       
-      if (agentFields) {
-        // Only add fields that aren't already included
-        agentFields.forEach(field => {
-          if (!fields.some(f => f.name === field.name)) {
-            fields.push(field);
-          }
-        });
-      }
+      return {
+        ...prev,
+        [agentId]: {
+          ...agentInputs,
+          [field]: [...currentValues, '']
+        }
+      };
     });
-    
-    return fields;
+  };
+  
+  const handleRemoveMultiselectItem = (agentId: string, field: string, index: number) => {
+    setPromptInputs(prev => {
+      const agentInputs = prev[agentId] || {};
+      const currentValues = [...(agentInputs[field] || [''])];
+      
+      if (currentValues.length > 1) {
+        currentValues.splice(index, 1);
+      } else {
+        currentValues[0] = '';
+      }
+      
+      return {
+        ...prev,
+        [agentId]: {
+          ...agentInputs,
+          [field]: currentValues
+        }
+      };
+    });
+  };
+  
+  const handleMultiselectChange = (agentId: string, field: string, index: number, value: string) => {
+    setPromptInputs(prev => {
+      const agentInputs = prev[agentId] || {};
+      const currentValues = [...(agentInputs[field] || [''])];
+      currentValues[index] = value;
+      
+      return {
+        ...prev,
+        [agentId]: {
+          ...agentInputs,
+          [field]: currentValues
+        }
+      };
+    });
   };
 
-  const inputFields = getInputFields();
+  const promptTemplates = getPromptTemplates();
 
   const draggedAgent = activeId 
     ? (typeof activeId === 'number' 
@@ -510,91 +608,165 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
 
       {showInputForm && (
         <div id="input-form" className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <SlidersHorizontal className="h-5 w-5 text-blue-500" />
             Provide Input for Your Workflow
           </h3>
-          <form onSubmit={handleSubmitInput} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {inputFields.map(field => (
-                <div key={field.name} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                  </label>
-                  
-                  {field.isArray ? (
-                    <div className="space-y-2">
-                      {(formState[field.name.split('.')[0] as keyof typeof formState] as string[]).map((item, index) => (
-                        <div key={`${field.name}-${index}`} className="flex items-center gap-2">
-                          <input
-                            type={field.type}
-                            value={item}
-                            onChange={(e) => handleArrayInputChange(field.name, index, e.target.value)}
-                            placeholder={field.placeholder}
-                            required={field.required && index === 0}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeArrayItem(field.name, index)}
-                            className="p-2 text-red-500 hover:text-red-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+          
+          <Tabs defaultValue={promptTemplates[0]?.agentId} className="w-full">
+            <TabsList className="mb-4 w-full overflow-x-auto flex whitespace-nowrap pb-2">
+              {promptTemplates.map((template, index) => {
+                const agent = configuredAgents.find(ca => ca.agent.backendId === template.agentId)?.agent;
+                if (!agent) return null;
+                
+                return (
+                  <TabsTrigger 
+                    key={template.agentId} 
+                    value={template.agentId}
+                    className="flex items-center gap-2"
+                  >
+                    <agent.icon className="h-4 w-4" />
+                    <span>{agent.name}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            
+            {promptTemplates.map((template) => {
+              const agent = configuredAgents.find(ca => ca.agent.backendId === template.agentId)?.agent;
+              if (!agent) return null;
+              
+              return (
+                <TabsContent key={template.agentId} value={template.agentId} className="space-y-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <agent.icon className="h-5 w-5 text-blue-500" />
+                      {agent.name} Input
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {template.fields.map((field) => (
+                        <div key={field.name} className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {field.label} {field.required && <span className="text-red-500">*</span>}
+                          </label>
+                          
+                          {field.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{field.description}</p>
+                          )}
+                          
+                          {field.type === 'text' && (
+                            <input
+                              type="text"
+                              value={promptInputs[template.agentId]?.[field.name] || ''}
+                              onChange={(e) => handlePromptInputChange(template.agentId, field.name, e.target.value)}
+                              placeholder={field.placeholder}
+                              required={field.required}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                            />
+                          )}
+                          
+                          {field.type === 'textarea' && (
+                            <textarea
+                              value={promptInputs[template.agentId]?.[field.name] || ''}
+                              onChange={(e) => handlePromptInputChange(template.agentId, field.name, e.target.value)}
+                              placeholder={field.placeholder}
+                              required={field.required}
+                              rows={4}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                            />
+                          )}
+                          
+                          {field.type === 'select' && (
+                            <select
+                              value={promptInputs[template.agentId]?.[field.name] || ''}
+                              onChange={(e) => handlePromptInputChange(template.agentId, field.name, e.target.value)}
+                              required={field.required}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">{field.placeholder}</option>
+                              {field.options?.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          )}
+                          
+                          {field.type === 'multiselect' && (
+                            <div className="space-y-2">
+                              {(promptInputs[template.agentId]?.[field.name] || [''])?.map((item: string, index: number) => (
+                                <div key={`${field.name}-${index}`} className="flex items-center gap-2">
+                                  {field.options ? (
+                                    <select
+                                      value={item}
+                                      onChange={(e) => handleMultiselectChange(template.agentId, field.name, index, e.target.value)}
+                                      required={field.required && index === 0}
+                                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                    >
+                                      <option value="">{field.placeholder}</option>
+                                      {field.options.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={item}
+                                      onChange={(e) => handleMultiselectChange(template.agentId, field.name, index, e.target.value)}
+                                      placeholder={field.placeholder}
+                                      required={field.required && index === 0}
+                                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                    />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveMultiselectItem(template.agentId, field.name, index)}
+                                    className="p-2 text-red-500 hover:text-red-600"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => handleAddMultiselectItem(template.agentId, field.name)}
+                                className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 flex items-center gap-1"
+                              >
+                                + Add {field.label.toLowerCase()}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
-                      <button
-                        type="button"
-                        onClick={() => addArrayItem(field.name)}
-                        className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 flex items-center gap-1"
-                      >
-                        + Add {field.label.toLowerCase()}
-                      </button>
                     </div>
-                  ) : (
-                    <input
-                      type={field.type}
-                      name={field.name}
-                      value={
-                        field.name.includes('.')
-                          ? (formState[field.name.split('.')[0] as keyof typeof formState] as any)[
-                              field.name.split('.')[1]
-                            ]
-                          : (formState[field.name as keyof typeof formState] as string)
-                      }
-                      onChange={handleInputChange}
-                      placeholder={field.placeholder}
-                      required={field.required}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isExecuting}
-                className={`
-                  px-6 py-2 bg-blue-600 text-white rounded-lg 
-                  hover:bg-blue-700 transition-colors flex items-center gap-2
-                  ${isExecuting ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
-              >
-                {isExecuting ? (
-                  <>
-                    <RotateCw className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Submit
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+          
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleExecuteWorkflow}
+              disabled={isExecuting}
+              className={`
+                px-6 py-2 bg-blue-600 text-white rounded-lg 
+                hover:bg-blue-700 transition-colors flex items-center gap-2
+                ${isExecuting ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+            >
+              {isExecuting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Execute Workflow
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
@@ -605,29 +777,80 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
             Workflow Results
           </h3>
           
-          <div className="space-y-6">
-            {results.map((result, index) => (
-              <div 
-                key={result.agentId} 
-                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-md font-medium text-gray-900 dark:text-white">
-                    {index + 1}. {result.agentName}
-                  </h4>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(result.timestamp).toLocaleString()}
-                  </span>
-                </div>
+          <Tabs defaultValue={results[0]?.agentId} value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-4 w-full overflow-x-auto flex whitespace-nowrap pb-2">
+              {results.map((result) => {
+                const agent = configuredAgents.find(ca => ca.agent.backendId === result.agentId)?.agent;
+                if (!agent) return null;
                 
-                <div className="prose dark:prose-invert max-w-none text-sm mt-2">
-                  <ReactMarkdown>
-                    {result.output}
-                  </ReactMarkdown>
+                return (
+                  <TabsTrigger 
+                    key={result.agentId} 
+                    value={result.agentId}
+                    disabled={result.status === 'idle'}
+                    className="flex items-center gap-2"
+                  >
+                    <agent.icon className="h-4 w-4" />
+                    <span>{result.agentName}</span>
+                    {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {result.status === 'error' && <X className="h-3 w-3 text-red-500" />}
+                    {result.status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            
+            {results.map((result) => (
+              <TabsContent key={result.agentId} value={result.agentId} className="space-y-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white">
+                      {result.agentName} Output
+                    </h4>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(result.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  {result.status === 'processing' && (
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+                      <p className="text-gray-500 dark:text-gray-400">Processing your request...</p>
+                    </div>
+                  )}
+                  
+                  {result.status === 'error' && (
+                    <div className="flex flex-col items-center justify-center py-10 text-red-500">
+                      <X className="h-10 w-10 mb-4" />
+                      <p>An error occurred while processing this agent.</p>
+                      <button 
+                        className="mt-4 px-4 py-2 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded-lg flex items-center gap-2"
+                        onClick={() => {
+                          // Reset this specific agent result
+                          setResults(prev => prev.map(r => 
+                            r.agentId === result.agentId 
+                              ? {...r, status: 'idle', output: ''} 
+                              : r
+                          ));
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  
+                  {result.status === 'completed' && result.output && (
+                    <div className="prose dark:prose-invert max-w-none text-sm">
+                      <ReactMarkdown>
+                        {result.output}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </TabsContent>
             ))}
-          </div>
+          </Tabs>
         </div>
       )}
     </div>

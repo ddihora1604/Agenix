@@ -285,3 +285,81 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground;
 }
+
+/* Custom animation classes */
+@keyframes float {
+  0% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); }
+  100% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+}
+
+@keyframes float-delayed {
+  0% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); }
+  100% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+}
+
+.animate-float {
+  --rotation: 12deg;
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  --rotation: -6deg;
+  animation: float-delayed 8s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* Grid patterns */
+.bg-grid-white {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+.bg-grid-dark {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.bg-circuit-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55zm15 0h10v10H70zm15 0h10v10H85zM10 25h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55zm15 0h10v10H70zM10 40h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55zm15 0h10v10H70zm15 0h10v10H85zM10 55h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55zm15 0h10v10H70zM10 70h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55zm15 0h10v10H70zm15 0h10v10H85zM10 85h10v10H10zm15 0h10v10H25zm15 0h10v10H40zm15 0h10v10H55z' fill='%23ffffff' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* Root theme variables */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 250, 250, 250;
+  --background-end-rgb: 240, 240, 245;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 15, 23, 42;
+    --background-end-rgb: 10, 15, 30;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
