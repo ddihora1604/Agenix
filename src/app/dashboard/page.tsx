@@ -39,35 +39,40 @@ const Dashboard = () => {
           name: "Competitor Watchdog",
           description: "Monitor and analyze competitor activities in real-time",
           icon: Target,
-          category: "Marketing"
+          category: "Marketing",
+          backendId: "competitor_analysis"
         },
         {
           id: 2,
           name: "Product Recommender",
           description: "AI-driven product recommendations based on customer behavior",
           icon: ShoppingCart,
-          category: "Marketing"
+          category: "Marketing",
+          backendId: "product_recommendations"
         },
         {
           id: 3,
           name: "Trend Analyst",
           description: "Identify and analyze market trends and patterns",
           icon: TrendingUp,
-          category: "Marketing"
+          category: "Marketing",
+          backendId: "trend_identification"
         },
         {
           id: 4,
           name: "Content Creator",
           description: "Generate engaging marketing content automatically",
           icon: FileEdit,
-          category: "Marketing"
+          category: "Marketing",
+          backendId: "content_creation"
         },
         {
           id: 5,
           name: "Sales Strategist",
           description: "Develop data-driven sales strategies",
           icon: BarChart,
-          category: "Marketing"
+          category: "Marketing",
+          backendId: "sales_enablement"
         }
       ]
     },
@@ -80,35 +85,40 @@ const Dashboard = () => {
           name: "Meeting Summarizer Agent",
           description: "Automatically generate comprehensive meeting summaries",
           icon: Brain,
-          category: "Productivity"
+          category: "Productivity",
+          backendId: "meeting_summarizer"
         },
         {
           id: 7,
           name: "Task Scheduler Agent",
           description: "Intelligent task scheduling and prioritization",
           icon: Calendar,
-          category: "Productivity"
+          category: "Productivity",
+          backendId: "task_scheduler"
         },
         {
           id: 8,
           name: "Email Manager Agent",
           description: "Smart email organization and response automation",
           icon: Mail,
-          category: "Productivity"
+          category: "Productivity",
+          backendId: "email_manager"
         },
         {
           id: 9,
           name: "Report Generator Agent",
           description: "Automated business report creation and analysis",
           icon: FileText,
-          category: "Productivity"
+          category: "Productivity",
+          backendId: "report_generator"
         },
         {
           id: 10,
           name: "Strategy Recommender Agent",
           description: "AI-powered business strategy recommendations",
           icon: Lightbulb,
-          category: "Productivity"
+          category: "Productivity",
+          backendId: "strategy_recommender"
         }
       ]
     },
@@ -121,49 +131,56 @@ const Dashboard = () => {
           name: "Learning Journey Orchestrator",
           description: "Personalized learning path creation and management",
           icon: Rocket,
-          category: "Education"
+          category: "Education",
+          backendId: "learning_journey"
         },
         {
           id: 12,
           name: "Content Curator",
           description: "Intelligent educational content curation and organization",
           icon: Book,
-          category: "Education"
+          category: "Education",
+          backendId: "content_curator"
         },
         {
           id: 13,
           name: "Assessment Engine",
           description: "Automated assessment creation and grading",
           icon: FileText,
-          category: "Education"
+          category: "Education",
+          backendId: "assessment_engine"
         },
         {
           id: 14,
           name: "Study Buddy",
           description: "Interactive AI-powered study assistance",
           icon: Users,
-          category: "Education"
+          category: "Education",
+          backendId: "study_buddy"
         },
         {
           id: 15,
           name: "Research Assistant",
           description: "Advanced research support and analysis",
           icon: Search,
-          category: "Education"
+          category: "Education",
+          backendId: "research_assistant"
         },
         {
           id: 16,
           name: "Writing Coach",
           description: "AI-powered writing improvement and feedback",
           icon: PenTool,
-          category: "Education"
+          category: "Education",
+          backendId: "writing_coach"
         },
         {
           id: 17,
           name: "Project Manager",
           description: "Educational project planning and tracking",
           icon: Briefcase,
-          category: "Education"
+          category: "Education",
+          backendId: "project_manager"
         }
       ]
     },
@@ -176,7 +193,8 @@ const Dashboard = () => {
           name: "Financial Analyzer",
           description: "Comprehensive financial data analysis and reporting",
           icon: DollarSign,
-          category: "Finance"
+          category: "Finance",
+          backendId: "financial_analyzer"
         }
       ]
     }
