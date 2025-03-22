@@ -13,6 +13,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "chart.js": "^4.4.0",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
@@ -23,6 +24,7 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^15.6.1",
     "tailwind-merge": "^2.2.1",
     "zustand": "^4.5.1"
   },

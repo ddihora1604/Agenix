@@ -23,9 +23,9 @@ const Sidebar: React.FC = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Workflow, label: 'Workflows', path: '/workflows' },
     { icon: Box, label: 'AI Agents', path: '/agents' },
-    { icon: Users, label: 'Team', path: '/team' },
     { icon: BookOpen, label: 'Documentation', path: '/documentation' },
     { icon: HelpCircle, label: 'Support', path: '/support' },
+    { icon: Users, label: 'Team', path: '/team' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
