@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -43,12 +43,20 @@ interface ConfiguredAgent {
   agent: PlaygroundProps['agents'][0];
 }
 
-interface AgentResult {
+// Define the ResultStatus type
+type ResultStatus = 'idle' | 'processing' | 'completed' | 'error';
+
+// Define valid source types
+type ResultSource = 'file' | 'simulated' | 'none';
+
+interface Result {
   agentId: string;
   agentName: string;
+  status: ResultStatus;
   output: string;
   timestamp: string;
-  status: 'idle' | 'processing' | 'completed' | 'error';
+  source?: ResultSource;
+  error?: string;
 }
 
 interface PromptTemplate {
@@ -106,9 +114,10 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [showInputForm, setShowInputForm] = useState(false);
-  const [results, setResults] = useState<AgentResult[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [activeTab, setActiveTab] = useState<string>('');
   const [promptInputs, setPromptInputs] = useState<Record<string, any>>({});
+  const [activeWorkflowState, setActiveWorkflowState] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
   
   const { setNodeRef: setDroppableRef } = useDroppable({
     id: 'configured-workflow',
@@ -129,6 +138,99 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
   );
 
   const { addNotification } = useNotificationStore();
+
+  // Add polling interval ref to track when to stop polling
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Add function to check for markdown files
+  const checkMarkdownFiles = async () => {
+    if (activeWorkflowState !== 'running') {
+      console.log('Not checking for markdown files - workflow not running');
+      return;
+    }
+    
+    console.log('Checking for markdown files...');
+    
+    // Only check for agents that are in non-completed state
+    const pendingAgents = results.filter(result => result.status !== 'completed' && result.status !== 'error');
+    console.log(`Found ${pendingAgents.length} pending agents to check`);
+    
+    if (pendingAgents.length === 0) {
+      // Stop polling if all agents are complete or in error state
+      console.log('No pending agents to check, stopping polling');
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+    
+    // Check for markdown files for each pending agent
+    for (const result of pendingAgents) {
+      console.log(`Checking markdown file for agent: ${result.agentId}`);
+      try {
+        const response = await fetch(`/api/markdown?agentId=${result.agentId}`);
+        
+        console.log(`API response for ${result.agentId}: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`Found markdown file for ${result.agentId}`, data);
+          
+          // Update the result with the markdown content
+          setResults(prev => {
+            console.log('Updating results state with markdown content');
+            return prev.map(r => 
+              r.agentId === result.agentId 
+                ? { 
+                    ...r, 
+                    status: 'completed', 
+                    output: data.content,
+                    source: 'file'
+                  } 
+                : r
+            );
+          });
+          
+          // Add a notification
+          addNotification({
+            message: `${result.agentName} markdown file has been loaded`,
+            type: 'success'
+          });
+        } else if (response.status !== 404) {
+          // Log other errors (not including 404 which is expected)
+          const errorData = await response.json();
+          console.error(`Error fetching markdown file for ${result.agentId}:`, errorData);
+        } else {
+          console.log(`No markdown file found for ${result.agentId} (404)`);
+        }
+      } catch (error) {
+        console.error(`Error checking markdown file for ${result.agentId}:`, error);
+      }
+    }
+  };
+  
+  // Start/stop polling when workflow state changes
+  useEffect(() => {
+    if (activeWorkflowState === 'running') {
+      // Start polling every 3 seconds
+      pollingIntervalRef.current = setInterval(checkMarkdownFiles, 3000);
+    } else {
+      // Stop polling when workflow is not running
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [activeWorkflowState, results]);
 
   const handleConfigureAgent = (agent: PlaygroundProps['agents'][0]) => {
     const newId = `${agent.id}-${Date.now()}`;
@@ -398,17 +500,41 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
   };
 
   const handleExecuteWorkflow = async () => {
+    // Update workflow state to running
+    setActiveWorkflowState('running');
+    console.log('Starting workflow execution, setting state to running');
+    
+    // Reset results and set status to processing for all configured agents
+    const initialResults = configuredAgents.map(ca => ({
+      agentId: ca.agent.backendId,
+      agentName: ca.agent.name,
+      status: 'processing' as ResultStatus,
+      output: '',
+      timestamp: new Date().toISOString(),
+      source: 'none' as ResultSource
+    }));
+    
+    console.log('Initializing results with processing status', initialResults);
+    setResults(initialResults);
     setIsExecuting(true);
     
-    // Update result status to processing
-    setResults(prev => prev.map(result => ({
-      ...result,
-      status: 'processing'
-    })));
+    // Start polling immediately
+    console.log('Starting polling for markdown files');
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    pollingIntervalRef.current = setInterval(checkMarkdownFiles, 3000);
     
-    // Execute each agent one by one
     try {
-      // Call the API endpoint with all agent inputs at once
+      // Get combined inputs
+      const agentInputs: Record<string, any> = {};
+      
+      Object.keys(promptInputs).forEach(agentId => {
+        agentInputs[agentId] = promptInputs[agentId] || {};
+      });
+      
+      // Make API call to trigger marketing workflow
+      console.log('Making API call to /api/marketing with agent IDs:', configuredAgents.map(ca => ca.agent.backendId));
       const response = await fetch('/api/marketing', {
         method: 'POST',
         headers: {
@@ -416,37 +542,94 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
         },
         body: JSON.stringify({
           agentIds: configuredAgents.map(ca => ca.agent.backendId),
-          userInputs: promptInputs
+          userInputs: agentInputs
         }),
       });
       
-      const data = await response.json();
-      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process agents');
+        console.error('API call failed with status:', response.status);
+        throw new Error('Failed to execute workflow');
       }
       
-      // Update results with API response
-      setResults(data.results);
+      const data = await response.json();
+      console.log('API response received:', data);
       
-      addNotification({
-        message: 'Workflow execution completed successfully',
-        type: 'success'
+      // Update results with API response, but prioritize completed results
+      setResults(prev => {
+        // Create a map of existing completed results to preserve them
+        const completedResults = prev.reduce((acc, result) => {
+          if (result.status === 'completed') {
+            acc[result.agentId] = result;
+          }
+          return acc;
+        }, {} as Record<string, typeof prev[0]>);
+        
+        console.log('Updating results with API response');
+        
+        // Update with new data, preserving completed results
+        return data.results.map((newResult: any) => {
+          // If we already have a completed result, keep it
+          if (completedResults[newResult.agentId]) {
+            console.log(`Preserving completed result for ${newResult.agentId}`);
+            return completedResults[newResult.agentId];
+          }
+          // Otherwise use the new result
+          console.log(`Setting result for ${newResult.agentId} to:`, newResult);
+          return newResult;
+        });
       });
+      
+      // Check if all agents are now complete
+      const allComplete = data.results.every((result: any) => 
+        result.status === 'completed' || result.status === 'error'
+      );
+      
+      if (allComplete) {
+        console.log('All agents are complete, setting workflow state to complete');
+        setActiveWorkflowState('complete');
+        
+        // Stop polling when all are complete
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        
+        addNotification({
+          message: 'All markdown files have been loaded',
+          type: 'success'
+        });
+      } else {
+        // If not all complete, continue polling
+        console.log('Some agents are still processing, continuing to poll');
+        addNotification({
+          message: 'Checking for markdown files in output directory...',
+          type: 'info'
+        });
+      }
     } catch (error) {
       console.error('Error executing workflow:', error);
       
-      // Update status to error for all agents
-      setResults(prev => prev.map(result => ({
-        ...result,
-        status: 'error',
-        output: 'Error processing agent. Please try again.'
-      })));
+      // Set all processing results to error
+      setResults(prev => prev.map(result => 
+        result.status === 'processing' 
+          ? {...result, status: 'error' as ResultStatus, error: (error as Error).message} 
+          : result
+      ));
       
+      // Set workflow state to error
+      setActiveWorkflowState('error');
+      
+      // Add error notification
       addNotification({
-        message: 'Error executing workflow',
+        message: 'An error occurred while executing the workflow',
         type: 'error'
       });
+      
+      // Stop polling on error
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     } finally {
       setIsExecuting(false);
     }
@@ -662,7 +845,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                               onChange={(e) => handlePromptInputChange(template.agentId, field.name, e.target.value)}
                               placeholder={field.placeholder}
                               required={field.required}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                              className="w-full px-3 py-2 border-2 border-gray-300 bg-white text-gray-900 dark:border-blue-400 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300"
                             />
                           )}
                           
@@ -673,7 +856,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                               placeholder={field.placeholder}
                               required={field.required}
                               rows={4}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                              className="w-full px-3 py-2 border-2 border-gray-300 bg-white text-gray-900 dark:border-blue-400 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300"
                             />
                           )}
                           
@@ -682,7 +865,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                               value={promptInputs[template.agentId]?.[field.name] || ''}
                               onChange={(e) => handlePromptInputChange(template.agentId, field.name, e.target.value)}
                               required={field.required}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                              className="w-full px-3 py-2 border-2 border-gray-300 bg-white text-gray-900 dark:border-blue-400 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300"
                             >
                               <option value="">{field.placeholder}</option>
                               {field.options?.map((option) => (
@@ -700,7 +883,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                                       value={item}
                                       onChange={(e) => handleMultiselectChange(template.agentId, field.name, index, e.target.value)}
                                       required={field.required && index === 0}
-                                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                      className="w-full px-3 py-2 border-2 border-gray-300 bg-white text-gray-900 dark:border-blue-400 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300"
                                     >
                                       <option value="">{field.placeholder}</option>
                                       {field.options.map((option) => (
@@ -714,7 +897,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                                       onChange={(e) => handleMultiselectChange(template.agentId, field.name, index, e.target.value)}
                                       placeholder={field.placeholder}
                                       required={field.required && index === 0}
-                                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                      className="w-full px-3 py-2 border-2 border-gray-300 bg-white text-gray-900 dark:border-blue-400 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300"
                                     />
                                   )}
                                   <button
@@ -771,13 +954,13 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
       )}
 
       {results.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div id="results-section" className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-500" />
             Workflow Results
           </h3>
           
-          <Tabs defaultValue={results[0]?.agentId} value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs defaultValue={results[0]?.agentId} className="w-full">
             <TabsList className="mb-4 w-full overflow-x-auto flex whitespace-nowrap pb-2">
               {results.map((result) => {
                 const agent = configuredAgents.find(ca => ca.agent.backendId === result.agentId)?.agent;
@@ -787,14 +970,13 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                   <TabsTrigger 
                     key={result.agentId} 
                     value={result.agentId}
-                    disabled={result.status === 'idle'}
                     className="flex items-center gap-2"
                   >
                     <agent.icon className="h-4 w-4" />
-                    <span>{result.agentName}</span>
-                    {result.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
-                    {result.status === 'error' && <X className="h-3 w-3 text-red-500" />}
-                    {result.status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                    <span>{agent.name}</span>
+                    {result.status === 'processing' && (
+                      <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse ml-1"></span>
+                    )}
                   </TabsTrigger>
                 );
               })}
@@ -803,19 +985,42 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
             {results.map((result) => (
               <TabsContent key={result.agentId} value={result.agentId} className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-md font-medium text-gray-900 dark:text-white">
-                      {result.agentName} Output
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                      {(() => {
+                        const agent = configuredAgents.find(ca => ca.agent.backendId === result.agentId)?.agent;
+                        if (!agent) return null;
+                        return (
+                          <>
+                            <agent.icon className="h-5 w-5 text-blue-500" />
+                            {agent.name} Results
+                          </>
+                        );
+                      })()}
                     </h4>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(result.timestamp).toLocaleString()}
-                    </span>
+                    
+                    {result.status === 'completed' && result.source && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        result.source === 'file' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                      }`}>
+                        {result.source === 'file' ? 'From File' : 'Simulated'}
+                      </span>
+                    )}
                   </div>
                   
+                  {result.status === 'idle' && (
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                      <RotateCw className="h-10 w-10 mb-4" />
+                      <p>This agent has not been executed yet.</p>
+                    </div>
+                  )}
+                  
                   {result.status === 'processing' && (
-                    <div className="flex flex-col items-center justify-center py-10">
-                      <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-4" />
-                      <p className="text-gray-500 dark:text-gray-400">Processing your request...</p>
+                    <div className="flex flex-col items-center justify-center py-10 text-blue-500">
+                      <Loader2 className="h-10 w-10 mb-4 animate-spin" />
+                      <p>Processing...</p>
                     </div>
                   )}
                   
@@ -829,7 +1034,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                           // Reset this specific agent result
                           setResults(prev => prev.map(r => 
                             r.agentId === result.agentId 
-                              ? {...r, status: 'idle', output: ''} 
+                              ? {...r, status: 'idle' as ResultStatus, output: ''} 
                               : r
                           ));
                         }}
@@ -842,9 +1047,39 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
                   
                   {result.status === 'completed' && result.output && (
                     <div className="prose dark:prose-invert max-w-none text-sm">
-                      <ReactMarkdown>
-                        {result.output}
-                      </ReactMarkdown>
+                      {result.source === 'file' ? (
+                        <>
+                          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                            Content from markdown file in output directory: 
+                            <code className="ml-1 px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                              {result.agentId}.md
+                            </code>
+                          </div>
+                          <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                            <ReactMarkdown>
+                              {result.output}
+                            </ReactMarkdown>
+                          </div>
+                        </>
+                      ) : (
+                        <ReactMarkdown>
+                          {result.output}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                  )}
+
+                  {result.status === 'completed' && !result.output && (
+                    <div className="flex flex-col items-center justify-center py-10 text-amber-500">
+                      <div className="text-center">
+                        <p className="mb-2">The markdown file was found but contains no content.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Check that the file exists and has content in the output directory: 
+                          <code className="ml-1 px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                            ..\marketing_ai\marketing_ai\output\{result.agentId}.md
+                          </code>
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
