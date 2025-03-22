@@ -223,11 +223,6 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Configured Workflow
             </h3>
-            {configuredAgents.length > 0 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {configuredAgents.length} agent{configuredAgents.length !== 1 ? 's' : ''} configured
-              </span>
-            )}
           </div>
 
           <SortableContext items={configuredAgents.map(ca => ca.id)} strategy={verticalListSortingStrategy}>
