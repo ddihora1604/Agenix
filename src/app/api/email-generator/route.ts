@@ -349,11 +349,14 @@ function cleanAndFormatEmail(emailContent: string): string {
   // Ensure proper spacing after punctuation
   emailContent = emailContent.replace(/([.!?])(?=\S)/g, '$1 ');
   
+  // Remove any hardcoded date (October 26, 2023)
+  emailContent = emailContent.replace(/October 26,\s*2023/g, '');
+  
   // Ensure paragraphs are properly separated
   const paragraphs = emailContent.split('\n\n');
   const formattedParagraphs = paragraphs.map(p => p.trim()).filter(p => p.length > 0);
   
-  // Add proper date format if not present
+  // Add proper date format with current date and time
   if (!emailContent.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) && 
       !emailContent.match(/^\w+,\s+\w+\s+\d{1,2},\s+\d{4}/)) {
     const today = new Date();
@@ -361,12 +364,21 @@ function cleanAndFormatEmail(emailContent: string): string {
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
-      day: 'numeric' 
+      day: 'numeric'
     });
+    
+    // Add time to the date format
+    const formattedTime = today.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const dateTimeString = `${formattedDate} at ${formattedTime}`;
     
     // Only add date if it doesn't seem to start with one already
     if (!emailContent.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i)) {
-      emailContent = formattedDate + '\n\n' + emailContent;
+      emailContent = dateTimeString + '\n\n' + emailContent;
     }
   }
   

@@ -3,6 +3,7 @@
 import { ThemeProvider } from 'next-themes';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useThemeStore } from '@/store/theme';
+import { SidebarProvider } from '@/hooks/use-sidebar-state';
 
 // Animation context for controlling animations throughout the app
 type AnimationContextType = {
@@ -62,15 +63,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AnimationContext.Provider value={animationContextValue}>
-      <ThemeProvider 
-        attribute="class" 
-        defaultTheme="light" 
-        enableSystem={false}
-        disableTransitionOnChange={animationPreference === 'reduced'}
-      >
-        {children}
-      </ThemeProvider>
-    </AnimationContext.Provider>
+    <SidebarProvider>
+      <AnimationContext.Provider value={animationContextValue}>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem={false}
+          disableTransitionOnChange={animationPreference === 'reduced'}
+        >
+          {children}
+        </ThemeProvider>
+      </AnimationContext.Provider>
+    </SidebarProvider>
   );
 } 

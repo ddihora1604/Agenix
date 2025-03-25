@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Send, Loader2, AlertTriangle, CheckCircle2, Terminal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useSidebarState } from '@/hooks/use-sidebar-state';
 
 const EmailWriterPage: React.FC = () => {
   const router = useRouter();
@@ -15,6 +16,8 @@ const EmailWriterPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pythonError, setPythonError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const { setShowEmailGenerator } = useSidebarState();
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     // Clear error and success messages when the email prompt changes
@@ -96,17 +99,24 @@ const EmailWriterPage: React.FC = () => {
     setRetryCount(0);
   };
 
+  // Handle going back to the agents page
+  const handleBackClick = () => {
+    // We no longer need to set showEmailGenerator to false
+    // since we want it to persist across navigation
+    router.push('/agents');
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
       <div className="flex items-center mb-6">
         <button 
-          onClick={() => router.push('/agents')}
+          onClick={handleBackClick}
           className="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Back to Agents"
         >
           <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Professional Email Writer</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Email Generation Agent</h1>
       </div>
       
       {apiKeyMissing && (
@@ -212,25 +222,25 @@ const EmailWriterPage: React.FC = () => {
       
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          {/* <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Describe the email you want to generate
-          </h2>
+          </h2> */}
           
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label 
+              {/* <label 
                 htmlFor="emailPrompt" 
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
                 Email Details
-              </label>
+              </label> */}
               <textarea
                 id="emailPrompt"
                 value={emailPrompt}
                 onChange={(e) => setEmailPrompt(e.target.value)}
-                placeholder="Describe the purpose of your email, who it's for, key points, tone, etc."
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-h-[150px]"
-                rows={6}
+                placeholder="Please provide details for your email, including its purpose, recipient, key points, deadlines or attachments, preferred tone (formal, friendly, urgent, etc.), and your name and role (if relevant) to generate a well-structured email."
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-h-[1px]"
+                rows={2}
               />
               {error && !apiKeyMissing && !pythonError && retryCount <= 2 && (
                 <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-start">
@@ -284,12 +294,14 @@ const EmailWriterPage: React.FC = () => {
                     );
                   }
                   
-                  // Format date
-                  if ((/^\w+,\s+\w+\s+\d{1,2},\s+\d{4}$/).test(line.trim()) || 
+                  // Format date with time
+                  if ((/^\w+,\s+\w+\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+(AM|PM)$/).test(line.trim()) || 
+                      (/^\w+,\s+\w+\s+\d{1,2},\s+\d{4}$/).test(line.trim()) || 
                       (/^\d{1,2}\/\d{1,2}\/\d{4}$/).test(line.trim()) ||
-                      (/^\d{1,2}\s+\w+\s+\d{4}$/).test(line.trim())) {
+                      (/^\d{1,2}\s+\w+\s+\d{4}$/).test(line.trim()) ||
+                      line.includes(' at ') && (line.includes('AM') || line.includes('PM'))) {
                     return (
-                      <p key={index} className="text-gray-500 dark:text-gray-400 text-sm my-1">
+                      <p key={index} className="text-gray-500 dark:text-gray-400 text-sm my-1 font-medium">
                         {line}
                       </p>
                     );
@@ -332,15 +344,30 @@ const EmailWriterPage: React.FC = () => {
                 onClick={() => {
                   navigator.clipboard.writeText(generatedEmail);
                   setSuccessMessage('Email copied to clipboard!');
+                  setIsCopied(true);
                   setTimeout(() => setSuccessMessage(null), 3000);
+                  setTimeout(() => setIsCopied(false), 5000);
                 }}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium flex items-center"
+                className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors duration-300 ${
+                  isCopied 
+                    ? "bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700" 
+                    : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
+                }`}
               >
-                <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy to Clipboard
+                {isCopied ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy to Clipboard
+                  </>
+                )}
               </button>
             </div>
           </div>

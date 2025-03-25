@@ -46,6 +46,7 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/marketplace': 'Marketplace',
   '/agents': 'AI Agents',
+  '/agents/email-writer': 'Email Generation Agent',
   '/workflow': 'Workflow Builder',
   '/settings': 'Settings',
   '/profile': 'User Profile',

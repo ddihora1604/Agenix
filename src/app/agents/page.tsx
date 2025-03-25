@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { useSidebarState } from '@/hooks/use-sidebar-state';
 
 // Define the agent interface
 interface Agent {
@@ -249,11 +250,22 @@ function downloadAgentFile(agent: Agent) {
 
 const AgentsPage: React.FC = () => {
   const router = useRouter();
+  
   // State for pagination
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState('');
-  const searchQuery = useDebounce(searchInputValue, 300); // 300ms debounce delay
+  const debouncedSearchQuery = useDebounce(searchInputValue, 300);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Get the sidebar state
+  const { setShowEmailGenerator } = useSidebarState();
+  
+  // Update search query after debounce
+  useEffect(() => {
+    setSearchQuery(debouncedSearchQuery);
+  }, [debouncedSearchQuery]);
+  
   const agentsPerPage = 9;
 
   // Define all agents with their categories and descriptions
@@ -409,6 +421,8 @@ const AgentsPage: React.FC = () => {
   const handleConfigureClick = (agentId: string) => {
     // Navigate to the specific agent page based on ID
     if (agentId === 'professional_email_writer') {
+      // Set the showEmailGenerator state to true before navigating
+      setShowEmailGenerator(true);
       router.push('/agents/email-writer');
     } else {
       // For future implementations of other agents
