@@ -41,5 +41,5 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
-
+# virtual
 .venv

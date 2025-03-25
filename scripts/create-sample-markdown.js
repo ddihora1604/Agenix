@@ -39,7 +39,7 @@ Our analysis indicates an opportunity to position our offerings in the mid-tier 
 ### Recommended Focus Areas
 - Emphasize our superior customer service
 - Highlight our faster innovation cycle
-- Target underserved geographic regions
+- Target under-served geographic regions
 `,
 
   'product_recommendations.md': `# Product Recommendations

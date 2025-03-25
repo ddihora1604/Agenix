@@ -1,3 +1,5 @@
+// tscon
+
 {
   "compilerOptions": {
     "target": "es5",

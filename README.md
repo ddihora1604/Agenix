@@ -1,4 +1,4 @@
-# Marketing AI Agents Workflow
+# AI Agent Marketplace
 
 This project integrates a set of AI-powered marketing agents with a React frontend, allowing users to configure and execute marketing workflows.
 
