@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from 'next-themes';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useThemeStore } from '@/store/theme';
 
 // Animation context for controlling animations throughout the app
 type AnimationContextType = {
@@ -28,6 +29,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       ? 'reduced' 
       : 'full'
   );
+  const { setLightTheme } = useThemeStore();
 
   useEffect(() => {
     setMounted(true);
@@ -40,9 +42,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setAnimationPreference(e.matches ? 'reduced' : 'full');
     };
     
+    // Ensure light theme is set on first load
+    setLightTheme();
+    
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  }, [setLightTheme]);
 
   const animationContextValue = {
     isAnimating,
@@ -60,8 +65,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <AnimationContext.Provider value={animationContextValue}>
       <ThemeProvider 
         attribute="class" 
-        defaultTheme="system" 
-        enableSystem
+        defaultTheme="light" 
+        enableSystem={false}
         disableTransitionOnChange={animationPreference === 'reduced'}
       >
         {children}

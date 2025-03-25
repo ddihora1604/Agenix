@@ -1,1 +1,0 @@
-// Delete this file completely as its functionality is now handled by src/app/layout.tsx and src/app/page.tsx

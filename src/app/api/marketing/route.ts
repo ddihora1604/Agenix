@@ -92,17 +92,30 @@ async function processMarkdownFiles(agentIds: string[]) {
     if (fs.existsSync(filePath)) {
       try {
         // Read the markdown file
-        const output = fs.readFileSync(filePath, 'utf8');
+        const content = fs.readFileSync(filePath, 'utf8');
         console.log(`Successfully read markdown file: ${filePath}`);
         
-        return {
-          agentId,
-          agentName,
-          output,
-          timestamp: new Date().toISOString(),
-          status: 'completed',
-          source: 'file'
-        };
+        // Only set as completed if the file has content
+        if (content && content.trim()) {
+          return {
+            agentId,
+            agentName,
+            output: content,
+            timestamp: new Date().toISOString(),
+            status: 'completed',
+            source: 'file'
+          };
+        } else {
+          console.log(`Markdown file exists but is empty: ${filePath}`);
+          return {
+            agentId,
+            agentName,
+            output: '',
+            timestamp: new Date().toISOString(),
+            status: 'processing', // Keep as processing since file exists but is empty
+            source: 'none'
+          };
+        }
       } catch (error) {
         console.error(`Error reading markdown file ${filePath}:`, error);
         return {

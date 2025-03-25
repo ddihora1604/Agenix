@@ -1,27 +1,30 @@
 import type { Metadata } from 'next';
-import { Inter, Manrope } from 'next/font/google';
+import { Source_Serif_4, Lora } from 'next/font/google';
 import { Providers } from '@/components/Providers';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import Chatbot from '@/components/Chatbot';
+import SidebarAwareContent from '@/components/SidebarAwareContent';
 import '@/styles/globals.css';
 
-// Primary font for UI
-const inter = Inter({
+// Primary font for UI - Source Serif Pro is a classic serif font with excellent readability
+const sourceSerif = Source_Serif_4({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-source-serif',
   display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
-// Secondary font for headings
-const manrope = Manrope({
+// Secondary font for headings - Lora is an elegant serif font with professional characteristics
+const lora = Lora({
   subsets: ['latin'],
-  variable: '--font-manrope',
+  variable: '--font-lora',
   display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
-  title: 'AI Agent Marketplace',
+  title: 'MercadoVista',
   description: 'A marketplace for AI agents and workflow automation',
   keywords: 'AI, agents, marketplace, workflow, automation',
   authors: [{ name: 'AI Agent Marketplace Team' }],
@@ -37,18 +40,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${manrope.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${sourceSerif.variable} ${lora.variable}`}>
       <body className="font-sans transition-colors duration-300 antialiased">
         <Providers>
-          <div className="min-h-screen bg-background">
+          <div className="min-h-screen bg-background overflow-hidden">
             <div className="animate-fade-in">
               <Sidebar />
               <Navbar />
-              <main className="pt-16 p-6 lg:p-8 ml-20 transition-all duration-300">
-                <div className="max-w-7xl mx-auto animate-slide-up">
-                  {children}
-                </div>
-              </main>
+              <SidebarAwareContent>
+                {children}
+              </SidebarAwareContent>
               <Chatbot />
             </div>
           </div>
@@ -56,4 +57,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+} 

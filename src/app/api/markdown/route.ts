@@ -68,6 +68,15 @@ export async function GET(req: NextRequest) {
     // Process the markdown content for proper formatting if needed
     const processedContent = processMarkdownContent(markdownContent);
     
+    // If the content is empty after processing, return an error
+    if (!processedContent.trim()) {
+      console.error(`Markdown file is empty: ${filePath}`);
+      return NextResponse.json(
+        { error: 'Markdown file is empty', message: `File ${fileName} exists but contains no content` }, 
+        { status: 404 }
+      );
+    }
+    
     console.log(`Successfully read markdown file for ${agentId}`);
     return NextResponse.json({ 
       agentId,

@@ -1,11 +1,16 @@
 'use client';
 
-import React from 'react';
-import { Search, Bell, LogIn, UserPlus, Info, Mail } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, LogIn, UserPlus, Info, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
 import { ModeToggle } from './mode-toggle';
 import { cn } from '@/lib/utils';
+import NotificationPanel from './NotificationPanel';
+import { useRandomNotifications } from '@/hooks/useRandomNotifications';
+import { useNotificationStore } from '@/store/notifications';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const navButtons = [
   {
@@ -30,48 +35,131 @@ const navButtons = [
   },
 ];
 
+// Map paths to page titles
+const pageTitles: Record<string, string> = {
+  '/': 'Home',
+  '/home': 'Home', 
+  '/login': 'Login',
+  '/signup': 'Sign Up',
+  '/about': 'About Us',
+  '/contact': 'Contact Us',
+  '/dashboard': 'Dashboard',
+  '/marketplace': 'Marketplace',
+  '/agents': 'AI Agents',
+  '/workflow': 'Workflow Builder',
+  '/settings': 'Settings',
+  '/profile': 'User Profile',
+};
+
+// Common transition settings to ensure consistent animations
+const commonTransition = {
+  duration: 0.2,
+  ease: [0.25, 0.1, 0.25, 1.0], // cubic-bezier easing
+  immediate: true // Prevents any delay in starting the animation
+};
+
 export default function Navbar() {
   const { sidebarCollapsed } = useSidebarState();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications } = useNotificationStore();
+  const pathname = usePathname();
+  
+  // Determine if current page is home page
+  const isHomePage = pathname === '/' || pathname === '/home';
+  
+  // Get page title based on current path
+  const pageTitle = pageTitles[pathname] || 'MercadoVista';
+  
+  // Use the random notifications hook to generate notifications
+  useRandomNotifications();
+  
+  // Get the count of unread notifications
+  const unreadCount = notifications.length;
   
   return (
-    <header className={cn(
-      'sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 md:px-6 backdrop-blur transition-colors duration-300',
-      sidebarCollapsed ? 'lg:pl-6' : 'lg:pl-6'
-    )}>
-      {/* Search */}
-      <div className="flex-1 md:flex-initial">
-        <form className="relative flex items-center">
-          <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="search"
-            placeholder="Search..."
-            className="h-10 rounded-md border border-input bg-background pl-8 pr-4 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full md:w-[200px] lg:w-[250px]"
-          />
-        </form>
-      </div>
-      
-      {/* Nav buttons - hidden on mobile */}
-      <div className="hidden md:flex items-center gap-4 ml-auto mr-2">
-        {navButtons.map((button) => (
-          <Link
-            key={button.label}
-            href={button.href}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+    <motion.header 
+      className="fixed top-0 h-16 z-20 flex items-center gap-4 border-b border-border bg-background/95 backdrop-blur right-0 will-change-auto"
+      initial={false}
+      animate={{ 
+        left: sidebarCollapsed ? '80px' : '256px',
+        width: `calc(100% - ${sidebarCollapsed ? '80px' : '256px'})`
+      }}
+      transition={commonTransition}
+      style={{
+        transition: `left ${commonTransition.duration}s ${commonTransition.ease}, width ${commonTransition.duration}s ${commonTransition.ease}`
+      }}
+    >
+      <div className="w-full flex items-center px-4 md:px-6 transition-all duration-200 will-change-auto">
+        {/* Page Title - Now using motion.h1 for consistent animation */}
+        <motion.div 
+          className="flex items-center"
+          initial={false}
+          animate={{ opacity: 1 }}
+          transition={commonTransition}
+        >
+          <h1 className="text-lg font-semibold text-foreground transition-all duration-200">{pageTitle}</h1>
+        </motion.div>
+        
+        {/* Flex spacer */}
+        <div className="flex-1"></div>
+        
+        {/* Nav buttons - only shown on Home page and hidden on mobile */}
+        {isHomePage && (
+          <motion.div 
+            className="hidden md:flex items-center gap-4 mr-2"
+            initial={false}
+            animate={{ opacity: 1 }}
+            transition={commonTransition}
           >
-            <button.icon className="h-4 w-4" />
-            <span>{button.label}</span>
-          </Link>
-        ))}
+            {navButtons.map((button) => (
+              <Link
+                key={button.label}
+                href={button.href}
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200"
+              >
+                <button.icon className="h-4 w-4 transition-all duration-200" />
+                <span className="transition-all duration-200">{button.label}</span>
+              </Link>
+            ))}
+          </motion.div>
+        )}
+        
+        {/* Theme toggle - visible on all pages */}
+        <ModeToggle />
+        
+        {/* Notification - visible on all pages */}
+        <div className="relative">
+          <motion.button 
+            className="relative rounded-full h-9 w-9 flex items-center justify-center hover:bg-accent transition-colors duration-200"
+            onClick={() => setShowNotifications(!showNotifications)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Bell className="h-5 w-5 text-muted-foreground transition-all duration-200" />
+            <AnimatePresence>
+              {unreadCount > 0 && (
+                <motion.div
+                  key="notification-badge"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute -top-1 -right-1 flex items-center justify-center"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white transition-all duration-200">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+          
+          {showNotifications && (
+            <NotificationPanel onClose={() => setShowNotifications(false)} />
+          )}
+        </div>
       </div>
-      
-      {/* Theme toggle */}
-      <ModeToggle />
-      
-      {/* Notification */}
-      <button className="relative rounded-full h-9 w-9 flex items-center justify-center hover:bg-accent transition-colors">
-        <Bell className="h-5 w-5 text-muted-foreground" />
-        <span className="absolute top-2 right-2.5 h-1.5 w-1.5 rounded-full bg-red-500"></span>
-      </button>
-    </header>
+    </motion.header>
   );
 }

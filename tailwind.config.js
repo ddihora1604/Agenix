@@ -9,8 +9,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        heading: ['var(--font-manrope)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-source-serif)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+        heading: ['var(--font-lora)', 'var(--font-source-serif)', 'ui-serif', 'Georgia', 'Times New Roman', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -96,6 +96,16 @@ module.exports = {
           '0%, 100%': { opacity: 1 },
           '50%': { opacity: 0.5 },
         },
+        themeChange: {
+          '0%': { filter: 'brightness(1)' },
+          '10%': { filter: 'brightness(1.1)' },
+          '20%': { filter: 'brightness(1)' },
+          '100%': { filter: 'brightness(1)' },
+        },
+        iconSpin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        }
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -106,10 +116,13 @@ module.exports = {
         'scale': 'scale 0.3s ease-in-out',
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'spin-slow': 'spin 3s linear infinite',
+        'theme-change': 'themeChange 1s ease-out',
+        'icon-spin': 'iconSpin 0.5s ease-in-out',
       },
       transitionProperty: {
         'colors': 'color, background-color, border-color, text-decoration-color, fill, stroke',
         'all': 'all',
+        'theme': 'color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter',
       },
       transitionDuration: {
         '0': '0ms',
@@ -117,12 +130,14 @@ module.exports = {
         '500': '500ms',
         '700': '700ms',
         '1000': '1000ms',
+        '400': '400ms',
       },
       transitionTimingFunction: {
         'default': 'cubic-bezier(0.4, 0, 0.2, 1)',
         'in': 'cubic-bezier(0.4, 0, 1, 1)',
         'out': 'cubic-bezier(0, 0, 0.2, 1)',
         'in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'theme': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',

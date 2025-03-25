@@ -242,7 +242,7 @@ const SupportPage = () => {
           placeholder="Search for help topics, FAQs, or troubleshooting guides..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white text-gray-900"
+          className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-gray-100 text-gray-900"
         />
       </div>
 
@@ -302,21 +302,21 @@ const SupportPage = () => {
           onClick={() => setActiveTab('contact')}
           className={`cursor-pointer rounded-xl p-5 shadow-sm border transition-colors ${
             activeTab === 'contact' 
-              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
+              ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' 
               : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
           }`}
         >
           <div className="flex items-center">
             <div className={`p-3 rounded-lg ${
-              activeTab === 'contact' ? 'bg-emerald-100 dark:bg-emerald-800' : 'bg-gray-100 dark:bg-gray-700'
+              activeTab === 'contact' ? 'bg-blue-100 dark:bg-blue-800' : 'bg-gray-100 dark:bg-gray-700'
             }`}>
               <Mail className={`h-6 w-6 ${
-                activeTab === 'contact' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'
+                activeTab === 'contact' ? 'text-blue-400 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'
               }`} />
             </div>
             <div className="ml-4">
               <h3 className={`font-medium ${
-                activeTab === 'contact' ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-900 dark:text-white'
+                activeTab === 'contact' ? 'text-blue-500 dark:text-blue-300' : 'text-gray-900 dark:text-white'
               }`}>Contact Support</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">Get personalized assistance</p>
             </div>

@@ -1,0 +1,62 @@
+/* Theme transition styles */
+:root {
+  --theme-transition-duration: 400ms;
+  --theme-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Apply transitions to all color-related properties */
+.theme-transition-active {
+  transition-property: color, background-color, border-color, box-shadow, outline-color, fill, stroke;
+  transition-duration: var(--theme-transition-duration);
+  transition-timing-function: var(--theme-transition-ease);
+}
+
+/* Prevent transitions on initial page load */
+.theme-transition-inactive * {
+  transition: none !important;
+}
+
+/* Special animated elements */
+.theme-icon-sun {
+  transform-origin: center;
+  transition: transform var(--theme-transition-duration) var(--theme-transition-ease),
+              opacity var(--theme-transition-duration) var(--theme-transition-ease);
+}
+
+.theme-icon-moon {
+  transform-origin: center;
+  transition: transform var(--theme-transition-duration) var(--theme-transition-ease),
+              opacity var(--theme-transition-duration) var(--theme-transition-ease);
+}
+
+/* Keyframes for theme switch flash effect */
+@keyframes theme-switch-flash {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.theme-switch-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+  animation: theme-switch-flash var(--theme-transition-duration) var(--theme-transition-ease);
+}
+
+.theme-switch-flash.to-dark {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-switch-flash.to-light {
+  background-color: rgba(0, 0, 0, 0.05);
+} 

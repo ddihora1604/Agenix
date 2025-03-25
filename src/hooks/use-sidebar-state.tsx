@@ -11,8 +11,12 @@ export const useSidebarState = create<SidebarState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false, // Default is expanded
-      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      toggleSidebar: () => set((state) => ({ 
+        sidebarCollapsed: !state.sidebarCollapsed 
+      })),
+      setSidebarCollapsed: (collapsed) => set({ 
+        sidebarCollapsed: collapsed 
+      }),
     }),
     {
       name: 'sidebar-state',

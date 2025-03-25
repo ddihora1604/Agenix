@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowRight, ChevronRight, ChevronLeft, Users, Image, ShoppingCart, 
   Youtube, Mail, BookOpen, Music, Palette, Presentation, FileCheck,
@@ -8,7 +8,7 @@ import {
   Check, Target, ShoppingBag, TrendingUp, FileEdit, BarChart, Calendar,
   Search, Book, FileText, PenTool, Briefcase, Brain, Building2, DollarSign,
   CreditCard, Shield, Calculator, PieChart, Mail as MailIcon, Clock, LineChart,
-  Scale, Rocket
+  Scale, Rocket, X, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,10 +28,230 @@ interface Category {
   agents: Agent[];
 }
 
+// For calculating semantic search similarity
+function calculateSimilarity(text1: string, text2: string): number {
+  const text1Lower = text1.toLowerCase();
+  const text2Lower = text2.toLowerCase();
+  
+  // Split into words
+  const words1 = text1Lower.split(/\W+/).filter(word => word.length > 2);
+  const words2 = text2Lower.split(/\W+/).filter(word => word.length > 2);
+  
+  // Calculate term frequency
+  const tf1: Record<string, number> = {};
+  const tf2: Record<string, number> = {};
+  
+  words1.forEach(word => {
+    tf1[word] = (tf1[word] || 0) + 1;
+  });
+  
+  words2.forEach(word => {
+    tf2[word] = (tf2[word] || 0) + 1;
+  });
+  
+  // Get unique words from both texts
+  const uniqueWords = new Set([...Object.keys(tf1), ...Object.keys(tf2)]);
+  
+  // Calculate dot product
+  let dotProduct = 0;
+  let magnitude1 = 0;
+  let magnitude2 = 0;
+  
+  uniqueWords.forEach(word => {
+    const freq1 = tf1[word] || 0;
+    const freq2 = tf2[word] || 0;
+    
+    dotProduct += freq1 * freq2;
+    magnitude1 += freq1 * freq1;
+    magnitude2 += freq2 * freq2;
+  });
+  
+  // Handle edge case
+  if (magnitude1 === 0 || magnitude2 === 0) return 0;
+  
+  // Return cosine similarity
+  return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
+}
+
+// Function to debounce search input
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Function to highlight matched text in a string
+function highlightMatches(text: string, query: string): JSX.Element {
+  if (!query.trim()) return <>{text}</>;
+  
+  const queryTerms = query.toLowerCase().split(/\W+/).filter(term => term.length > 1);
+  if (queryTerms.length === 0) return <>{text}</>;
+  
+  const regex = new RegExp(`(${queryTerms.join('|')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        // Check if this part matches any of the query terms (case insensitive)
+        const isMatch = queryTerms.some(term => 
+          part.toLowerCase() === term.toLowerCase()
+        );
+        
+        return isMatch ? 
+          <span key={i} className="bg-yellow-100 dark:bg-yellow-900/30 font-medium">{part}</span> : 
+          <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+// Function to rank agents by search query
+function rankAgentsBySearch(agents: Agent[], searchQuery: string): Agent[] {
+  if (!searchQuery.trim()) return agents;
+  
+  // For better partial matching
+  const queryTerms = searchQuery.toLowerCase().split(/\W+/).filter(term => term.length > 1);
+  
+  return [...agents].sort((a, b) => {
+    const textA = `${a.name} ${a.description} ${a.category}`;
+    const textB = `${b.name} ${b.description} ${b.category}`;
+    
+    // Calculate semantic similarity
+    const similarityA = calculateSimilarity(textA, searchQuery);
+    const similarityB = calculateSimilarity(textB, searchQuery);
+    
+    // Check for direct partial matches
+    const textALower = textA.toLowerCase();
+    const textBLower = textB.toLowerCase();
+    
+    // Add extra weight for exact matches in name or description
+    let bonusA = 0;
+    let bonusB = 0;
+    
+    // Name exact match is a strong signal
+    if (a.name.toLowerCase().includes(searchQuery.toLowerCase())) bonusA += 0.5;
+    if (b.name.toLowerCase().includes(searchQuery.toLowerCase())) bonusB += 0.5;
+    
+    // Partial term matching
+    for (const term of queryTerms) {
+      if (textALower.includes(term)) bonusA += 0.1;
+      if (textBLower.includes(term)) bonusB += 0.1;
+    }
+    
+    // Return combined score
+    return (similarityB + bonusB) - (similarityA + bonusA);
+  }).filter(agent => {
+    const text = `${agent.name} ${agent.description} ${agent.category}`.toLowerCase();
+    const query = searchQuery.toLowerCase();
+    
+    // Check for any term match for more lenient filtering
+    const hasTermMatch = queryTerms.some(term => text.includes(term));
+    
+    // Only keep results with some relevance
+    const similarity = calculateSimilarity(text, query);
+    return similarity > 0 || text.includes(query) || hasTermMatch;
+  });
+}
+
+// Function to generate agent template file content
+function generateAgentFileContent(agent: Agent): string {
+  // Create a JSON representation of the agent with additional template fields
+  const agentTemplate = {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description,
+    category: agent.category,
+    version: "1.0.0",
+    configurable: true,
+    customization: {
+      parameters: [
+        { name: "param1", type: "string", default: "", description: "First parameter for customization" },
+        { name: "param2", type: "number", default: 0, description: "Second parameter for customization" }
+      ],
+      settings: {
+        advanced: false,
+        responseType: "json",
+        maxTokens: 1000
+      }
+    },
+    implementation: {
+      // Include a code template for implementing the agent
+      mainFunction: `
+// Main implementation function for ${agent.name}
+async function process(input) {
+  // TODO: Implement your custom logic here
+  
+  // Example implementation
+  const result = {
+    success: true,
+    agentName: "${agent.name}",
+    output: "This is a template response from ${agent.name}. Replace with your implementation.",
+    metadata: {
+      processed: new Date().toISOString(),
+      inputSize: JSON.stringify(input).length
+    }
+  };
+  
+  return result;
+}
+      `
+    },
+    // Instructions for usage
+    documentation: {
+      quickStart: `Quick start guide for ${agent.name}:\n1. Configure the agent parameters\n2. Implement the process function\n3. Test your implementation\n4. Deploy to your workflow`,
+      examples: [`Example usage of ${agent.name} with sample input and output`]
+    }
+  };
+  
+  // Return pretty-printed JSON
+  return JSON.stringify(agentTemplate, null, 2);
+}
+
+// Function to download agent file
+function downloadAgentFile(agent: Agent) {
+  // Generate file content
+  const content = generateAgentFileContent(agent);
+  
+  // Create file name - convert to kebab case
+  const fileName = `${agent.id.toLowerCase().replace(/_/g, '-')}-agent.json`;
+  
+  // Create a blob with the content
+  const blob = new Blob([content], { type: 'application/json' });
+  
+  // Create a URL for the blob
+  const url = URL.createObjectURL(blob);
+  
+  // Create a temporary link and trigger download
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  
+  // Clean up
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
 const AgentsPage: React.FC = () => {
   // State for pagination
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchInputValue, setSearchInputValue] = useState('');
+  const searchQuery = useDebounce(searchInputValue, 300); // 300ms debounce delay
   const agentsPerPage = 9;
 
   // Define all agents with their categories and descriptions
@@ -114,10 +334,24 @@ const AgentsPage: React.FC = () => {
     }
   ];
 
-  // Filter agents based on selected category
-  const filteredAgents = selectedCategory 
-    ? agentCategories.find(cat => cat.id === selectedCategory)?.agents || []
-    : agentCategories.flatMap(category => category.agents);
+  // Filter agents based on selected category and search query
+  const filteredAgents = useMemo(() => {
+    const categoryFiltered = selectedCategory 
+      ? agentCategories.find(cat => cat.id === selectedCategory)?.agents || []
+      : agentCategories.flatMap(category => category.agents);
+    
+    // Apply search if there's a query
+    if (searchQuery.trim()) {
+      return rankAgentsBySearch(categoryFiltered, searchQuery);
+    }
+    
+    return categoryFiltered;
+  }, [selectedCategory, searchQuery]);
+
+  // Reset to first page when search or category changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery, selectedCategory]);
 
   // Calculate total pages
   const totalPages = Math.ceil(filteredAgents.length / agentsPerPage);
@@ -139,6 +373,16 @@ const AgentsPage: React.FC = () => {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1);
     }
+  };
+
+  // Clear search query
+  const clearSearch = () => {
+    setSearchInputValue('');
+  };
+
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInputValue(e.target.value);
   };
 
   // Map category to color
@@ -166,6 +410,28 @@ const AgentsPage: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-300">
           Browse our collection of AI agents organized by workflow category
         </p>
+      </div>
+
+      {/* Search bar */}
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search for agents by name, description, or functionality..."
+          value={searchInputValue}
+          onChange={handleSearchChange}
+          className="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 text-gray-900"
+        />
+        {searchInputValue && (
+          <button 
+            onClick={clearSearch}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <X className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" />
+          </button>
+        )}
       </div>
 
       {/* Category filter */}
@@ -203,43 +469,90 @@ const AgentsPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Agent grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {currentAgents.map(agent => (
-          <div 
-            key={agent.id}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700"
-          >
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className={cn(
-                  "h-12 w-12 rounded-lg flex items-center justify-center",
-                  iconColors[agent.category] || iconColors.General
-                )}>
-                  <agent.icon className="h-6 w-6" />
+      {/* Search results info */}
+      {searchQuery.trim() && (
+        <div className="mb-6">
+          <p className="text-gray-600 dark:text-gray-300">
+            {filteredAgents.length === 0
+              ? "No agents found matching your search."
+              : filteredAgents.length === 1
+              ? "1 agent found matching your search."
+              : `${filteredAgents.length} agents found matching your search.`}
+            {searchQuery !== searchInputValue && <span className="ml-2 italic text-gray-500">(searching...)</span>}
+          </p>
+        </div>
+      )}
+
+      {/* No results message */}
+      {filteredAgents.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">No agents found</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
+            {searchQuery
+              ? "We couldn't find any agents matching your search. Try different keywords or clear the search."
+              : "No agents found in this category. Try selecting a different category."}
+          </p>
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Agent grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {currentAgents.map(agent => (
+            <div 
+              key={agent.id}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700"
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={cn(
+                    "h-12 w-12 rounded-lg flex items-center justify-center",
+                    iconColors[agent.category] || iconColors.General
+                  )}>
+                    <agent.icon className="h-6 w-6" />
+                  </div>
+                  <span className={cn(
+                    "text-xs font-medium px-2.5 py-0.5 rounded-full",
+                    categoryColors[agent.category] || categoryColors.General
+                  )}>
+                    {agent.category}
+                  </span>
                 </div>
-                <span className={cn(
-                  "text-xs font-medium px-2.5 py-0.5 rounded-full",
-                  categoryColors[agent.category] || categoryColors.General
-                )}>
-                  {agent.category}
-                </span>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  {searchQuery ? highlightMatches(agent.name, searchQuery) : agent.name}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                  {searchQuery ? highlightMatches(agent.description, searchQuery) : agent.description}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Configure
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadAgentFile(agent);
+                    }}
+                    title={`Download ${agent.name} template`}
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center justify-center"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                {agent.name}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                {agent.description}
-              </p>
-              <button
-                className="w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
-              >
-                Configure
-              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
