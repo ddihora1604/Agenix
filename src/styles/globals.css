@@ -219,6 +219,37 @@
   .dark input, .dark textarea, .dark select {
     @apply text-gray-100 placeholder:text-gray-400;
   }
+
+  /* Email content styling */
+  .email-content {
+    @apply text-base leading-relaxed;
+  }
+  
+  .email-content h3 {
+    @apply text-lg font-semibold mb-3 text-gray-900 dark:text-white;
+  }
+  
+  .email-content p {
+    @apply my-2 text-gray-700 dark:text-gray-300;
+  }
+  
+  .email-content br {
+    @apply block content-[''] h-4;
+  }
+  
+  .email-content p:first-of-type,
+  .email-content p:nth-of-type(2) {
+    @apply text-gray-500 dark:text-gray-400 text-sm;
+  }
+  
+  /* Improve readability in dark mode */
+  .dark .email-content {
+    @apply text-gray-200;
+  }
+  
+  .dark .email-content p {
+    @apply text-gray-300;
+  }
 }
 
 /* Animations */
