@@ -8,7 +8,7 @@ import {
   Check, Target, ShoppingBag, TrendingUp, FileEdit, BarChart, Calendar,
   Search, Book, FileText, PenTool, Briefcase, Brain, Building2, DollarSign,
   CreditCard, Shield, Calculator, PieChart, Mail as MailIcon, Clock, LineChart,
-  Scale, Rocket, X, Download
+  Scale, Rocket, X, Download, Box
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -404,13 +404,13 @@ const AgentsPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">AI Agents</h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Browse our collection of AI agents organized by workflow category
-        </p>
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
+      <div className="flex items-center mb-6">
+        <Box className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Browse our collection of AI agents organized by workflow category</h1>
       </div>
+      
+    
 
       {/* Search bar */}
       <div className="mb-6 relative">
@@ -556,36 +556,31 @@ const AgentsPage: React.FC = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-between items-center mt-8">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {currentPage * agentsPerPage + 1} to {Math.min((currentPage + 1) * agentsPerPage, filteredAgents.length)} of {filteredAgents.length} agents
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={prevPage}
-              disabled={currentPage === 0}
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                currentPage === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-              )}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={nextPage}
-              disabled={currentPage >= totalPages - 1}
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                currentPage >= totalPages - 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-              )}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
+        <div className="flex justify-center items-center space-x-2 mt-8">
+          <button
+            onClick={prevPage}
+            disabled={currentPage === 0}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              currentPage === 0
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            )}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={nextPage}
+            disabled={currentPage >= totalPages - 1}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              currentPage >= totalPages - 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            )}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       )}
     </div>

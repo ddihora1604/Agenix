@@ -12,7 +12,7 @@ import {
   Tooltip, 
   Legend 
 } from 'chart.js';
-import { Users, Zap, Clock, Cpu, Brain, TrendingUp, Calendar, Mail, FileText, Lightbulb, Book, Search, PenTool, Briefcase, DollarSign, Target, ShoppingCart, BarChart, FileEdit, Rocket } from 'lucide-react';
+import { Users, Zap, Clock, Cpu, Brain, TrendingUp, Calendar, Mail, FileText, Lightbulb, Book, Search, PenTool, Briefcase, DollarSign, Target, ShoppingCart, BarChart, FileEdit, Rocket, LayoutDashboard } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
 import WorkflowSelector from '@/components/WorkflowSelector';
 import Playground from '@/components/Playground';
@@ -201,29 +201,29 @@ const Dashboard = () => {
   ];
 
   const statCards = [
-    { title: 'Active Users', value: '1,245', icon: Users, change: '+5.3%', color: 'blue' },
-    { title: 'Workflows Created', value: '832', icon: Zap, change: '+12.7%', color: 'indigo' },
-    { title: 'Avg. Completion Time', value: '1.2m', icon: Clock, change: '-8.1%', color: 'green' },
-    { title: 'AI Agents Used', value: '28', icon: Cpu, change: '+3.2%', color: 'purple' },
+    // { title: 'Active Users', value: '1,245', icon: Users, change: '+5.3%', color: 'blue' },
+    // { title: 'Workflows Created', value: '832', icon: Zap, change: '+12.7%', color: 'indigo' },
+    // { title: 'Avg. Completion Time', value: '1.2m', icon: Clock, change: '-8.1%', color: 'green' },
+    // { title: 'AI Agents Used', value: '28', icon: Cpu, change: '+3.2%', color: 'purple' },
   ];
 
   const chartData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
     datasets: [
-      {
-        label: 'Workflow Executions',
-        data: [65, 59, 80, 81, 56, 55, 70],
-        borderColor: 'rgb(99, 102, 241)',
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-        tension: 0.3,
-      },
-      {
-        label: 'AI Agent Usage',
-        data: [28, 48, 40, 19, 86, 27, 90],
-        borderColor: 'rgb(139, 92, 246)',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-        tension: 0.3,
-      },
+      // {
+      //   label: 'Workflow Executions',
+      //   data: [65, 59, 80, 81, 56, 55, 70],
+      //   borderColor: 'rgb(99, 102, 241)',
+      //   backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      //   tension: 0.3,
+      // },
+      // {
+      //   label: 'AI Agent Usage',
+      //   data: [28, 48, 40, 19, 86, 27, 90],
+      //   borderColor: 'rgb(139, 92, 246)',
+      //   backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      //   tension: 0.3,
+      // },
     ],
   };
 
@@ -246,11 +246,37 @@ const Dashboard = () => {
     ?.agents || [];
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-        AI Agent Dashboard
-      </h1>
+    <div className="p-6 max-w-9xl mx-auto space-y-0.5">
+      {/* <div className="flex items-center mb-4">
+        <LayoutDashboard className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+      </div> */}
 
+      {/* Stats Overview */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat, index) => (
+          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`p-3 rounded-lg bg-${stat.color}-100 dark:bg-${stat.color}-900/30`}>
+                  <stat.icon className={`h-6 w-6 text-${stat.color}-600 dark:text-${stat.color}-400`} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</h3>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                </div>
+              </div>
+              <span className={`text-sm font-semibold ${stat.change.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {stat.change}
+              </span>
+            </div>
+          </div>
+        ))}
+      </section>
+
+     
+
+      {/* Workflow Playground */}
       <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
           Workflow Playground

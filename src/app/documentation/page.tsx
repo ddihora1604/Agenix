@@ -500,10 +500,10 @@ const DocumentationPage = () => {
   const currentAgent = agentDocs[selectedAgent as keyof typeof agentDocs];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
       <div className="flex items-center mb-8">
-        <Book className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Documentation</h1>
+        <BookOpen className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">How to use AI Agents?</h1>
       </div>
 
       {/* Search Bar */}

@@ -226,7 +226,7 @@ const SupportPage = () => {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
       <div className="flex items-center mb-8">
         <HelpCircle className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Help & Support</h1>

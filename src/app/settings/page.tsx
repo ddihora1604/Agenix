@@ -103,15 +103,35 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center mb-8">
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
+      <div className="flex items-center mb-1">
         <Settings className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <div className="w-full flex justify-end pr-1">
+
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="h-5 w-5 mr-2" />
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="h-5 w-5 mr-2" />
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+          </div>
       </div>
 
       <form onSubmit={handleSaveSettings} className="space-y-10">
         {/* Theme Toggle - Special placement outside sections */}
-        <div className="flex justify-end">
+        {/* <div className="flex justify-end">
           <button
             type="button"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -129,7 +149,7 @@ const SettingsPage = () => {
               </>
             )}
           </button>
-        </div>
+        </div> */}
 
         {/* Workflow Preferences */}
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">

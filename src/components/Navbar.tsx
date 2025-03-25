@@ -49,6 +49,8 @@ const pageTitles: Record<string, string> = {
   '/workflow': 'Workflow Builder',
   '/settings': 'Settings',
   '/profile': 'User Profile',
+  '/documentation': 'Documentation',
+  '/support': 'Support',
 };
 
 // Common transition settings to ensure consistent animations
