@@ -21,14 +21,18 @@ import { useProfilePanel } from '@/hooks/use-profile-panel';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar } = useSidebarState();
+  const { sidebarCollapsed, toggleSidebar, showEmailGenerator } = useSidebarState();
   const { toggleProfilePanel } = useProfilePanel();
   const router = useRouter();
   
   const menuItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Box, label: 'AI Agents', path: '/agents' },
+    { icon: Box, label: 'AI Agents', path: '/agents', 
+      subItems: showEmailGenerator ? [
+        { label: 'Email Generation Agent', path: '/agents/email-writer' }
+      ] : []
+    },
     { icon: BookOpen, label: 'Documentation', path: '/documentation' },
     { icon: HelpCircle, label: 'Support', path: '/support' },
     { icon: Settings, label: 'Settings', path: '/settings' },
@@ -124,23 +128,26 @@ const Sidebar: React.FC = () => {
           <ul className="space-y-1.5 px-2">
             {menuItems.map((item, index) => {
               const isActive = pathname === item.path;
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+              const hasActiveSubItem = hasSubItems && item.subItems.some(subItem => pathname === subItem.path);
+              
               return (
-                <li key={index}>
+                <li key={index} className={cn(hasSubItems ? "mb-2" : "")}>
                   <Link 
                     href={item.path}
                     className={cn(
                       "flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200",
-                      isActive 
+                      (isActive || hasActiveSubItem)
                         ? "bg-gradient-to-r from-blue-50 to-pink-50 dark:from-blue-900/20 dark:to-pink-900/20 text-blue-700 dark:text-blue-400 shadow-sm border border-blue-100/80 dark:border-blue-800/30" 
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/50 hover:shadow-sm",
                       sidebarCollapsed && "justify-center",
-                      isActive && sidebarCollapsed && "bg-blue-50 dark:bg-blue-900/20"
+                      (isActive || hasActiveSubItem) && sidebarCollapsed && "bg-blue-50 dark:bg-blue-900/20"
                     )}
                     title={sidebarCollapsed ? item.label : undefined}
                   >
                     <div className={cn(
                       "p-1 rounded-lg",
-                      isActive ? "bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-400" : "text-gray-500 dark:text-gray-400",
+                      (isActive || hasActiveSubItem) ? "bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-400" : "text-gray-500 dark:text-gray-400",
                       !sidebarCollapsed && "mr-3"
                     )}>
                       <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -159,10 +166,41 @@ const Sidebar: React.FC = () => {
                     >
                       {!sidebarCollapsed && item.label}
                     </motion.span>
-                    {!sidebarCollapsed && isActive && (
+                    {!sidebarCollapsed && (isActive || hasActiveSubItem) && (
                       <div className="ml-auto h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"></div>
                     )}
                   </Link>
+                  
+                  {/* Sub-items section */}
+                  {hasSubItems && !sidebarCollapsed && (
+                    <ul className="pl-10 mt-1 space-y-1">
+                      {item.subItems.map((subItem, subIndex) => {
+                        const isSubActive = pathname === subItem.path;
+                        
+                        return (
+                          <li key={`${index}-${subIndex}`}>
+                            <Link
+                              href={subItem.path}
+                              className={cn(
+                                "flex items-center px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200",
+                                isSubActive
+                                  ? "bg-gradient-to-r from-blue-50/50 to-pink-50/50 dark:from-blue-900/10 dark:to-pink-900/10 text-blue-700 dark:text-blue-400 shadow-sm border border-blue-100/50 dark:border-blue-800/20"
+                                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:shadow-sm"
+                              )}
+                            >
+                              <span className="flex items-center">
+                                <ChevronRight className="h-3 w-3 mr-1" />
+                                {subItem.label}
+                              </span>
+                              {isSubActive && (
+                                <div className="ml-auto h-1.5 w-1.5 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"></div>
+                              )}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
