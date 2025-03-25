@@ -1,8 +1,19 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { MessageSquare, X, Send, Bot, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import dynamic from 'next/dynamic';
+import { geminiService } from '../lib/gemini-service';
+import '../styles/blender-bg.css';
+
+// Dynamically import the 3D model component with no SSR to avoid hydration issues
+const AIChatbotModel = dynamic(() => import('./AIChatbotModel'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center">
+    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+  </div>
+});
 
 interface Message {
   id: string;
@@ -16,6 +27,7 @@ const Chatbot: React.FC = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isModelAnimating, setIsModelAnimating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +45,19 @@ const Chatbot: React.FC = () => {
     }
   }, [isOpen]);
 
+  // Add a welcome message when the chat is first opened
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        type: 'bot',
+        content: "Hello! I'm your AI assistant for this marketplace. I can help you explore AI agents, navigate the platform, or answer any questions you might have. How can I assist you today?",
+        timestamp: new Date(),
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen, messages.length]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
@@ -47,123 +72,142 @@ const Chatbot: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
     setIsTyping(true);
+    setIsModelAnimating(true);
 
-    // Simulate bot response
-    setTimeout(() => {
+    try {
+      // Get response from Gemini
+      const response = await geminiService.sendMessage(message);
+      
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
-        content: getBotResponse(message),
+        content: response,
         timestamp: new Date(),
       };
+      
       setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error getting response:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: "I'm sorry, I encountered an error. Please try again later.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
-  };
-
-  const getBotResponse = (userMessage: string): string => {
-    const responses = {
-      default: "I'm here to help you with any questions about our AI agents and marketplace.",
-      agents: "We have various AI agents available, including SEO Optimizer, Meeting Summarizer, and Contract Analyzer. Which one would you like to know more about?",
-      workflow: "You can create custom workflows by combining different AI agents. Would you like me to show you how?",
-      pricing: "Our pricing is based on the agents you use and your usage volume. Would you like to see our pricing plans?",
-    };
-
-    const message = userMessage.toLowerCase();
-    if (message.includes('agent')) return responses.agents;
-    if (message.includes('workflow')) return responses.workflow;
-    if (message.includes('price') || message.includes('cost')) return responses.pricing;
-    return responses.default;
+      setTimeout(() => setIsModelAnimating(false), 1000);
+    }
   };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Chat Button */}
+      {/* Chat Button with 3D Model */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all duration-300",
+          "w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all duration-300",
           isOpen && "scale-0 opacity-0",
           "hover:scale-110"
         )}
       >
-        <MessageSquare className="w-6 h-6" />
+        <div className="w-full h-full absolute">
+          <Suspense fallback={<MessageSquare className="w-6 h-6" />}>
+            <AIChatbotModel isAnimating={true} />
+          </Suspense>
+        </div>
       </button>
 
       {/* Chat Window */}
       <div
         className={cn(
-          "absolute bottom-0 right-0 w-96 bg-white rounded-lg shadow-xl transition-all duration-300 transform",
+          "absolute bottom-0 right-0 w-96 overflow-hidden rounded-lg shadow-xl transition-all duration-300 transform",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0"
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center space-x-2">
-            <Bot className="w-6 h-6 text-blue-600" />
-            <h3 className="font-semibold text-gray-800">AI Assistant</h3>
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Messages */}
-        <div className="h-96 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex",
-                msg.type === 'user' ? 'justify-end' : 'justify-start'
-              )}
-            >
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-lg p-3",
-                  msg.type === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                )}
-              >
-                <p className="text-sm">{msg.content}</p>
-                <span className="text-xs opacity-70 mt-1 block">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+        {/* Blender style background wrapper */}
+        <div className="blender-bg blender-grid w-full h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-blue-900/30 backdrop-blur-sm bg-blue-900/20">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 relative">
+                <Suspense fallback={<Bot className="w-6 h-6 text-blue-200" />}>
+                  <AIChatbotModel isAnimating={isModelAnimating} />
+                </Suspense>
               </div>
+              <h3 className="font-semibold text-white">AI Assistant</h3>
             </div>
-          ))}
-          {isTyping && (
-            <div className="flex items-center space-x-2 text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">AI is typing...</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="border-t p-4">
-          <div className="flex space-x-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
             <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => setIsOpen(false)}
+              className="text-blue-200 hover:text-white transition-colors"
             >
-              <Send className="w-5 h-5" />
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </form>
+
+          {/* Messages */}
+          <div className="h-96 overflow-y-auto p-4 space-y-4 backdrop-blur-sm">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex",
+                  msg.type === 'user' ? 'justify-end' : 'justify-start'
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] rounded-lg p-3",
+                    msg.type === 'user'
+                      ? 'bg-blue-600/80 text-white backdrop-blur-sm rounded-br-none'
+                      : 'bg-white/10 backdrop-blur-md text-white rounded-bl-none'
+                  )}
+                >
+                  <p className="text-sm">{msg.content}</p>
+                  <span className="text-xs opacity-70 mt-1 block">
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex items-center space-x-2 text-blue-200">
+                <div className="w-6 h-6 relative">
+                  <Suspense fallback={<Loader2 className="w-4 h-4 animate-spin" />}>
+                    <AIChatbotModel isAnimating={true} />
+                  </Suspense>
+                </div>
+                <span className="text-sm">AI is thinking...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={handleSubmit} className="border-t border-blue-900/30 p-4 backdrop-blur-md bg-blue-900/20">
+            <div className="flex space-x-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 px-4 py-2 bg-white/10 backdrop-blur-md border border-blue-900/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-blue-200/70"
+              />
+              <button
+                type="submit"
+                disabled={isTyping}
+                className={cn(
+                  "px-4 py-2 bg-blue-600/80 text-white rounded-lg transition-colors backdrop-blur-sm",
+                  isTyping ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700/80"
+                )}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
