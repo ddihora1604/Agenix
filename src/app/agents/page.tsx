@@ -11,6 +11,7 @@ import {
   Scale, Rocket, X, Download, Box
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 // Define the agent interface
 interface Agent {
@@ -247,6 +248,7 @@ function downloadAgentFile(agent: Agent) {
 }
 
 const AgentsPage: React.FC = () => {
+  const router = useRouter();
   // State for pagination
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -260,11 +262,11 @@ const AgentsPage: React.FC = () => {
       id: 'general',
       name: 'General',
       agents: [
+        { id: 'professional_email_writer', name: 'Professional Email Writer', description: 'Craft professional business emails for various contexts', icon: Mail, category: 'General' },
         { id: 'user_persona_builder', name: 'User Persona Builder', description: 'Create detailed user personas for marketing and UX research', icon: Users, category: 'General' },
         { id: 'image_generator', name: 'Image Generator', description: 'Generate creative images based on text descriptions', icon: Image, category: 'General' },
         { id: 'ecommerce_product_description', name: 'E-commerce Product Description Enhancer', description: 'Enhance product descriptions for better conversions', icon: ShoppingCart, category: 'General' },
         { id: 'youtube_summarizer', name: 'YouTube Video Summarizer', description: 'Create concise summaries of YouTube video content', icon: Youtube, category: 'General' },
-        { id: 'professional_email_writer', name: 'Professional Email Writer', description: 'Craft professional business emails for various contexts', icon: Mail, category: 'General' },
         { id: 'story_maker', name: 'Story Maker', description: 'Create engaging stories for content marketing', icon: BookOpen, category: 'General' },
         { id: 'youtube_to_mp3', name: 'YouTube Video to MP3 Converter', description: 'Convert YouTube videos to MP3 audio files', icon: Music, category: 'General' },
         { id: 'logo_generator', name: 'Logo Generator', description: 'Generate professional logos based on business requirements', icon: Palette, category: 'General' },
@@ -403,6 +405,17 @@ const AgentsPage: React.FC = () => {
     'General': 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   };
 
+  // Function to handle clicking on configure button
+  const handleConfigureClick = (agentId: string) => {
+    // Navigate to the specific agent page based on ID
+    if (agentId === 'professional_email_writer') {
+      router.push('/agents/email-writer');
+    } else {
+      // For future implementations of other agents
+      console.log(`Configure clicked for agent: ${agentId}`);
+    }
+  };
+
   return (
     <div className="p-6 max-w-9xl mx-auto space-y-6">
       <div className="flex items-center mb-6">
@@ -533,6 +546,7 @@ const AgentsPage: React.FC = () => {
                 </p>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => handleConfigureClick(agent.id)}
                     className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
                   >
                     Configure
