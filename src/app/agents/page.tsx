@@ -259,7 +259,7 @@ const AgentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get the sidebar state
-  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer, setShowWebCrawler } = useSidebarState();
+  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer, setShowWebCrawler, setShowImageGenerator } = useSidebarState();
   
   // Update search query after debounce
   useEffect(() => {
@@ -279,16 +279,17 @@ const AgentsPage: React.FC = () => {
         { id: 'youtube_summarizer', name: 'YouTube Video Summarizer', description: 'Create concise summaries of YouTube video content', icon: Youtube, category: 'General' },
         { id: 'web_scraper', name: 'Web Crawler with Q&A', description: 'Extract structured data from websites and web pages and answers questions related to it.', icon: GanttChart, category: 'General' },
         { id: 'image_generator', name: 'Image Generator', description: 'Generate creative images based on text descriptions', icon: Image, category: 'General' },
+        { id: 'logo_generator', name: 'Logo Generator', description: 'Generate professional logos based on business requirements', icon: Palette, category: 'General' },
+        { id: 'blog_writer', name: 'Blog Writer', description: 'Create engaging blog posts on various topics', icon: Pencil, category: 'General' },
         { id: 'ecommerce_product_description', name: 'E-commerce Product Description Enhancer', description: 'Enhance product descriptions for better conversions', icon: ShoppingCart, category: 'General' },
         
         { id: 'story_maker', name: 'Story Maker', description: 'Create engaging stories for content marketing', icon: BookOpen, category: 'General' },
         { id: 'youtube_to_mp3', name: 'YouTube Video to MP3 Converter', description: 'Convert YouTube videos to MP3 audio files', icon: Music, category: 'General' },
-        { id: 'logo_generator', name: 'Logo Generator', description: 'Generate professional logos based on business requirements', icon: Palette, category: 'General' },
         { id: 'powerpoint_maker', name: 'PowerPoint Maker', description: 'Create professional presentations automatically', icon: Presentation, category: 'General' },
         { id: 'resume_filtering', name: 'Resume Filtering', description: 'Filter and rank resumes based on job requirements', icon: FileCheck, category: 'General' },
         { id: 'prompt_writer', name: 'Prompt Writer', description: 'Generate effective prompts for AI systems', icon: Lightbulb, category: 'General' },
         { id: 'language_translator', name: 'Language Translator', description: 'Translate content between multiple languages', icon: Globe, category: 'General' },
-        { id: 'blog_writer', name: 'Blog Writer', description: 'Create engaging blog posts on various topics', icon: Pencil, category: 'General' },
+        
         
         { id: 'audio_video_generation', name: 'Audio-Video Generation', description: 'Generate audio and video content for marketing', icon: FileAudio, category: 'General' },
         { id: 'social_media_scraper', name: 'Social Media Scraper', description: 'Extract data from various social media platforms', icon: Instagram, category: 'General' },
@@ -438,6 +439,10 @@ const AgentsPage: React.FC = () => {
       // Set the showWebCrawler state to true before navigating
       setShowWebCrawler(true);
       router.push('/agents/web-crawler');
+    } else if (agentId === 'image_generator') {
+      // Set the showImageGenerator state to true before navigating
+      setShowImageGenerator(true);
+      router.push('/agents/image-generator');
     } else {
       // For future implementations of other agents
       console.log(`Configure clicked for agent: ${agentId}`);
