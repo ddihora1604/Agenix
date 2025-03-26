@@ -53,7 +53,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
     
     # Your HuggingFace API token
-    HUGGINGFACE_API_TOKEN = "your_huggingface_api_token_here"
+    HUGGINGFACE_API_TOKEN = "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"
     
     try:
         # Initialize generator
