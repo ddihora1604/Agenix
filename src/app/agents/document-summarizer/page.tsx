@@ -14,40 +14,48 @@ import { useRouter } from 'next/navigation';
 
 // Helper function to parse and format error messages
 const formatErrorMessage = (error: string): { title: string; message: string; solution?: string } => {
-  // Handle Google API key errors
-  if (error.includes('GOOGLE_API_KEY') || error.includes('API key') || error.includes('authentication')) {
+  // API key related errors
+  if (error.includes('API key') || error.includes('GOOGLE_API_KEY')) {
     return {
-      title: 'Google API Key Missing or Invalid',
-      message: 'The application needs a valid Google API key to access the Gemini AI model.',
-      solution: 'Add your Google API key to the DocSummarizer/DocSummarizer/.env file. You can get a free API key from https://aistudio.google.com/'
+      title: 'API Key Issue',
+      message: 'The Google API key required for document summarization is missing or invalid.',
+      solution: 'Please contact the administrator to configure a valid API key.'
     };
   }
   
-  // Handle Python missing module errors
-  if (error.includes('Missing Python module:')) {
-    const module = error.replace('Missing Python module:', '').trim().split('.')[0];
+  // Timeout errors
+  if (error.includes('timed out') || error.includes('timeout')) {
     return {
-      title: 'Missing Python Dependency',
-      message: `The required Python module "${module}" is not installed.`,
-      solution: `Run the following command in your terminal to install it: pip install ${module}`
+      title: 'Processing Timeout',
+      message: 'The document took too long to process.',
+      solution: 'Please try a smaller document or try again later when the system is less busy.'
     };
   }
   
-  // Handle file type errors
-  if (error.includes('Only PDF files are supported')) {
+  // PDF extraction errors
+  if (error.includes('extract text') || error.includes('Could not extract')) {
     return {
-      title: 'Invalid File Type',
-      message: 'You can only upload PDF documents for summarization.',
-      solution: 'Please select a PDF file and try again.'
+      title: 'PDF Content Extraction Failed',
+      message: 'Unable to extract text from this PDF file.',
+      solution: 'The document might be scanned, image-based, or password protected. Please try a different document.'
     };
   }
   
-  // Handle file size errors
-  if (error.includes('exceeds 10MB limit')) {
+  // Rate limiting or quota issues
+  if (error.includes('quota') || error.includes('rate limit')) {
     return {
-      title: 'File Size Exceeded',
-      message: 'The uploaded file exceeds the maximum size limit of 10MB.',
-      solution: 'Please compress the PDF or upload a smaller document.'
+      title: 'Service Limit Reached',
+      message: 'The API usage quota or rate limit has been reached.',
+      solution: 'Please try again later when the quota resets.'
+    };
+  }
+  
+  // Empty or short summary
+  if (error.includes('too short') || error.includes('empty')) {
+    return {
+      title: 'Empty or Insufficient Content',
+      message: 'The document contains insufficient content to generate a good summary.',
+      solution: 'Please try a document with more textual content.'
     };
   }
   
@@ -66,6 +74,47 @@ const formatErrorMessage = (error: string): { title: string; message: string; so
     message: error,
     solution: 'Please try again or use a different document.'
   };
+};
+
+// Add this function to format summary text for display
+const formatSummaryForDisplay = (summary: string): React.ReactNode => {
+  if (!summary) return null;
+  
+  // Split the summary into paragraphs
+  const paragraphs = summary.split(/\n{2,}/);
+  
+  // Check if there are structured sections with headers (e.g., "KEY FINDINGS:")
+  const hasSections = paragraphs.some(p => /^[A-Z\s]{3,}:/.test(p.trim()));
+  
+  if (hasSections) {
+    // Process sections with headers differently
+    return paragraphs.map((paragraph, index) => {
+      // Check if this paragraph is a header
+      if (/^[A-Z\s]{3,}:/.test(paragraph.trim())) {
+        return (
+          <div key={index} className="mb-3">
+            <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">
+              {paragraph.trim()}
+            </h3>
+          </div>
+        );
+      }
+      
+      // Regular paragraph
+      return (
+        <p key={index} className="text-gray-700 dark:text-gray-300 mb-4">
+          {paragraph.trim()}
+        </p>
+      );
+    });
+  }
+  
+  // For regular summaries with no distinct sections, just return paragraphs
+  return paragraphs.map((paragraph, index) => (
+    <p key={index} className="text-gray-700 dark:text-gray-300 mb-4">
+      {paragraph.trim()}
+    </p>
+  ));
 };
 
 export default function DocumentSummarizerPage() {
@@ -302,19 +351,28 @@ export default function DocumentSummarizerPage() {
               </div>
               
               {/* Enhanced Error Message */}
-              {error && formattedError && (
-                <div className="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
-                    <h4 className="font-medium">{formattedError.title}</h4>
+              {error && (
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 max-w-md w-full">
+                    <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">
+                      {formatErrorMessage(error).title}
+                    </h3>
+                    <p className="text-red-700 dark:text-red-400 mb-4">
+                      {formatErrorMessage(error).message}
+                    </p>
+                    {formatErrorMessage(error).solution && (
+                      <div className="bg-white dark:bg-gray-800 rounded-md p-3 text-sm text-gray-700 dark:text-gray-300 mt-2">
+                        <strong>Suggestion:</strong> {formatErrorMessage(error).solution}
+                      </div>
+                    )}
+                    <button
+                      onClick={resetForm}
+                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      Try Again
+                    </button>
                   </div>
-                  <p className="ml-7 mb-2">{formattedError.message}</p>
-                  {formattedError.solution && (
-                    <div className="ml-7 mt-2 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
-                      <p className="font-medium text-xs text-gray-600 dark:text-gray-300 mb-1">Suggested Solution:</p>
-                      <p className="text-xs text-gray-800 dark:text-gray-200 font-mono">{formattedError.solution}</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -433,38 +491,8 @@ export default function DocumentSummarizerPage() {
                   Download Summary
                 </button>
               </div>
-              
-              <div className="prose dark:prose-invert prose-sm md:prose-base max-w-none flex-1 overflow-y-auto">
-                {summary.split('\n\n').map((paragraph, index) => {
-                  // Check if this is a heading (starts with # or has all caps)
-                  if (paragraph.startsWith('#') || /^[A-Z\s:]+$/.test(paragraph)) {
-                    return (
-                      <h3 key={index} className="text-lg font-bold mt-6 mb-2 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-1">
-                        {paragraph.replace(/^#+\s*/, '')}
-                      </h3>
-                    );
-                  }
-                  
-                  // Check if this is a list item
-                  if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('* ') || /^\d+\.\s/.test(paragraph.trim())) {
-                    return (
-                      <ul key={index} className="list-disc pl-6 my-4 space-y-2">
-                        {paragraph.split('\n').map((item, itemIndex) => (
-                          <li key={`${index}-${itemIndex}`} className="my-1 text-gray-700 dark:text-gray-300">
-                            {item.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '')}
-                          </li>
-                        ))}
-                      </ul>
-                    );
-                  }
-                  
-                  // Regular paragraph
-                  return (
-                    <p key={index} className="my-4 leading-relaxed text-gray-700 dark:text-gray-300">
-                      {paragraph}
-                    </p>
-                  );
-                })}
+              <div className="prose prose-blue dark:prose-invert max-w-none">
+                {formatSummaryForDisplay(summary)}
               </div>
             </div>
           ) : (

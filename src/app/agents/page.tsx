@@ -259,7 +259,7 @@ const AgentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get the sidebar state
-  const { setShowEmailGenerator, setShowDocumentSummarizer } = useSidebarState();
+  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer } = useSidebarState();
   
   // Update search query after debounce
   useEffect(() => {
@@ -276,9 +276,11 @@ const AgentsPage: React.FC = () => {
       agents: [
         { id: 'professional_email_writer', name: 'Professional Email Writer', description: 'Craft professional business emails for various contexts', icon: Mail, category: 'General' },
         { id: 'user_persona_builder', name: 'Document Summarizer', description: 'Analyze and summarize documents, extracting key insights and information', icon: Users, category: 'General' },
+        { id: 'youtube_summarizer', name: 'YouTube Video Summarizer', description: 'Create concise summaries of YouTube video content', icon: Youtube, category: 'General' },
+        { id: 'web_scraper', name: 'Web Crawler with Q&A', description: 'Extract structured data from websites and web pages and answers questions related to it.', icon: GanttChart, category: 'General' },
         { id: 'image_generator', name: 'Image Generator', description: 'Generate creative images based on text descriptions', icon: Image, category: 'General' },
         { id: 'ecommerce_product_description', name: 'E-commerce Product Description Enhancer', description: 'Enhance product descriptions for better conversions', icon: ShoppingCart, category: 'General' },
-        { id: 'youtube_summarizer', name: 'YouTube Video Summarizer', description: 'Create concise summaries of YouTube video content', icon: Youtube, category: 'General' },
+        
         { id: 'story_maker', name: 'Story Maker', description: 'Create engaging stories for content marketing', icon: BookOpen, category: 'General' },
         { id: 'youtube_to_mp3', name: 'YouTube Video to MP3 Converter', description: 'Convert YouTube videos to MP3 audio files', icon: Music, category: 'General' },
         { id: 'logo_generator', name: 'Logo Generator', description: 'Generate professional logos based on business requirements', icon: Palette, category: 'General' },
@@ -287,7 +289,7 @@ const AgentsPage: React.FC = () => {
         { id: 'prompt_writer', name: 'Prompt Writer', description: 'Generate effective prompts for AI systems', icon: Lightbulb, category: 'General' },
         { id: 'language_translator', name: 'Language Translator', description: 'Translate content between multiple languages', icon: Globe, category: 'General' },
         { id: 'blog_writer', name: 'Blog Writer', description: 'Create engaging blog posts on various topics', icon: Pencil, category: 'General' },
-        { id: 'web_scraper', name: 'Web Scraper', description: 'Extract structured data from websites and web pages', icon: GanttChart, category: 'General' },
+        
         { id: 'audio_video_generation', name: 'Audio-Video Generation', description: 'Generate audio and video content for marketing', icon: FileAudio, category: 'General' },
         { id: 'social_media_scraper', name: 'Social Media Scraper', description: 'Extract data from various social media platforms', icon: Instagram, category: 'General' },
         { id: 'statistical_analysis', name: 'Statistical Analysis Agent', description: 'Perform advanced statistical analysis on datasets', icon: BarChart2, category: 'General' },
@@ -428,6 +430,10 @@ const AgentsPage: React.FC = () => {
       // Set the showDocumentSummarizer state to true before navigating
       setShowDocumentSummarizer(true);
       router.push('/agents/document-summarizer');
+    } else if (agentId === 'youtube_summarizer') {
+      // Set the showYoutubeSummarizer state to true before navigating
+      setShowYoutubeSummarizer(true);
+      router.push('/agents/youtube-summarizer');
     } else {
       // For future implementations of other agents
       console.log(`Configure clicked for agent: ${agentId}`);
