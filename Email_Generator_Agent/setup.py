@@ -10,7 +10,7 @@ def install_dependencies():
     # Required packages
     required_packages = [
         "langchain==0.1.9",
-        "langchain-google-genai==0.0.6",
+        "langchain-google-genai==0.0.11",
         "python-dotenv==1.0.1",
         "colorama==0.4.6",
         "google-generativeai>=0.3.0"

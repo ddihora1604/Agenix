@@ -1,3 +1,0 @@
-"""
-Web Scraper Agent package.
-""" 

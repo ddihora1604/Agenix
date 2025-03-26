@@ -61,15 +61,28 @@ const EmailWriterPage: React.FC = () => {
           throw new Error('Google API key is missing or invalid. Please set up your API key in the .env file.');
         }
         
-        // Check for Python installation errors
-        if (data.isPythonError || (data.message && (
+        // Check for Python installation errors - use the setupRequired flag if available
+        if (data.setupRequired || data.isPythonError || (data.message && (
           data.message.includes('python') || 
           data.message.includes('Python') ||
           data.message.includes('ModuleNotFound') ||
           data.message.includes('No module named')
         ))) {
           setPythonError(true);
-          throw new Error('Python installation or dependency issue. Please check your Python installation.');
+          throw new Error(data.message || 'Python installation or dependency issue. Please check your Python installation.');
+        }
+        
+        // Check for Pydantic compatibility issues
+        if (data.isPydanticError || (data.message && (
+          data.message.includes('Pydantic') ||
+          data.message.includes('pydantic') ||
+          data.message.includes('compatibility')
+        ))) {
+          // These issues usually resolve after a refresh
+          setError("Compatibility issue detected. Please try your request again, as we've updated the compatibility settings.");
+          // Reset retry count because it's a fixable issue
+          setRetryCount(0);
+          throw new Error(data.message || 'Compatibility issue detected');
         }
         
         throw new Error(data.message || 'Failed to generate email');
@@ -82,10 +95,14 @@ const EmailWriterPage: React.FC = () => {
       setRetryCount(0);
     } catch (err) {
       const errorMessage = (err as Error).message || 'An error occurred while generating the email.';
-      setError(errorMessage);
+      if (!apiKeyMissing && !pythonError) {
+        setError(errorMessage);
+      }
       
-      // Increment retry count
-      setRetryCount(prev => prev + 1);
+      // Only increment retry count for non-setup issues
+      if (!apiKeyMissing && !pythonError) {
+        setRetryCount(prev => prev + 1);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -116,7 +133,7 @@ const EmailWriterPage: React.FC = () => {
         >
           <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Email Generation Agent</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Professional Email Writer</h1>
       </div>
       
       {apiKeyMissing && (
@@ -160,7 +177,8 @@ const EmailWriterPage: React.FC = () => {
             <li>Make sure <a href="https://www.python.org/downloads/" target="_blank" rel="noopener noreferrer" className="underline">Python 3.8+</a> is installed and added to your PATH</li>
             <li>Close all running Python processes and terminals</li>
             <li>Run the following command in a new terminal window to install dependencies:</li>
-            <li><code className="bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded block mt-1 whitespace-pre-wrap">pip install --user langchain langchain-google-genai python-dotenv colorama google-generativeai{'>'}=0.3.0</code></li>
+            <li><code className="bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded block mt-1 whitespace-pre-wrap">pip install --user langchain==0.1.9 langchain-google-genai==0.0.11 python-dotenv==1.0.1 colorama==0.4.6 google-generativeai{'>'}=0.3.0</code></li>
+            <li>If the above command fails, try: <code className="bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded block mt-1 whitespace-pre-wrap">python -m pip install --user --no-cache-dir langchain==0.1.9 langchain-google-genai==0.0.11 python-dotenv==1.0.1 colorama==0.4.6 google-generativeai{'>'}=0.3.0</code></li>
             <li>Restart your application</li>
           </ol>
           {retryCount > 1 && (
@@ -168,9 +186,10 @@ const EmailWriterPage: React.FC = () => {
               <p className="text-blue-800 dark:text-blue-300 text-sm font-medium">Still having issues?</p>
               <ul className="text-blue-700 dark:text-blue-300 text-sm list-disc ml-5 mt-2 space-y-1">
                 <li>Make sure you don't have any Python processes running that might lock files</li>
-                <li>Try installing the packages with <code className="bg-blue-200 dark:bg-blue-800 px-1 py-0.5 rounded">--no-cache-dir</code> flag</li>
                 <li>Check if your Python installation has write permissions</li>
+                <li>Try running the command as administrator</li>
                 <li>Try restarting your computer and then trying again</li>
+                <li>Ensure Python is in your system PATH by running <code className="bg-blue-200 dark:bg-blue-800 px-1 py-0.5 rounded">python --version</code> in a command prompt</li>
               </ul>
             </div>
           )}

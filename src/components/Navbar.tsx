@@ -47,6 +47,7 @@ const pageTitles: Record<string, string> = {
   '/marketplace': 'Marketplace',
   '/agents': 'AI Agents',
   '/agents/email-writer': 'Email Generation Agent',
+  '/agents/document-summarizer': 'Document Summarizer Agent',
   '/workflow': 'Workflow Builder',
   '/settings': 'Settings',
   '/profile': 'User Profile',
@@ -58,7 +59,6 @@ const pageTitles: Record<string, string> = {
 const commonTransition = {
   duration: 0.2,
   ease: [0.25, 0.1, 0.25, 1.0], // cubic-bezier easing
-  immediate: true // Prevents any delay in starting the animation
 };
 
 export default function Navbar() {
@@ -80,40 +80,26 @@ export default function Navbar() {
   const unreadCount = notifications.length;
   
   return (
-    <motion.header 
-      className="fixed top-0 h-16 z-20 flex items-center gap-4 border-b border-border bg-background/95 backdrop-blur right-0 will-change-auto"
-      initial={false}
-      animate={{ 
-        left: sidebarCollapsed ? '80px' : '256px',
-        width: `calc(100% - ${sidebarCollapsed ? '80px' : '256px'})`
-      }}
-      transition={commonTransition}
+    <header 
+      className="fixed top-0 h-16 z-20 flex items-center gap-4 border-b border-border bg-background/95 backdrop-blur right-0"
       style={{
+        left: sidebarCollapsed ? '80px' : '256px',
+        width: `calc(100% - ${sidebarCollapsed ? '80px' : '256px'})`,
         transition: `left ${commonTransition.duration}s ${commonTransition.ease}, width ${commonTransition.duration}s ${commonTransition.ease}`
       }}
     >
-      <div className="w-full flex items-center px-4 md:px-6 transition-all duration-200 will-change-auto">
-        {/* Page Title - Now using motion.h1 for consistent animation */}
-        <motion.div 
-          className="flex items-center"
-          initial={false}
-          animate={{ opacity: 1 }}
-          transition={commonTransition}
-        >
+      <div className="w-full flex items-center px-4 md:px-6 transition-all duration-200">
+        {/* Page Title */}
+        <div className="flex items-center">
           <h1 className="text-lg font-semibold text-foreground transition-all duration-200">{pageTitle}</h1>
-        </motion.div>
+        </div>
         
         {/* Flex spacer */}
         <div className="flex-1"></div>
         
         {/* Nav buttons - only shown on Home page and hidden on mobile */}
         {isHomePage && (
-          <motion.div 
-            className="hidden md:flex items-center gap-4 mr-2"
-            initial={false}
-            animate={{ opacity: 1 }}
-            transition={commonTransition}
-          >
+          <div className="hidden md:flex items-center gap-4 mr-2">
             {navButtons.map((button) => (
               <Link
                 key={button.label}
@@ -124,7 +110,7 @@ export default function Navbar() {
                 <span className="transition-all duration-200">{button.label}</span>
               </Link>
             ))}
-          </motion.div>
+          </div>
         )}
         
         {/* Theme toggle - visible on all pages */}
@@ -132,37 +118,25 @@ export default function Navbar() {
         
         {/* Notification - visible on all pages */}
         <div className="relative">
-          <motion.button 
+          <button 
             className="relative rounded-full h-9 w-9 flex items-center justify-center hover:bg-accent transition-colors duration-200"
             onClick={() => setShowNotifications(!showNotifications)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.2 }}
           >
             <Bell className="h-5 w-5 text-muted-foreground transition-all duration-200" />
-            <AnimatePresence>
-              {unreadCount > 0 && (
-                <motion.div
-                  key="notification-badge"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute -top-1 -right-1 flex items-center justify-center"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white transition-all duration-200">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {unreadCount > 0 && (
+              <div className="absolute -top-1 -right-1 flex items-center justify-center">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white transition-all duration-200">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              </div>
+            )}
+          </button>
           
           {showNotifications && (
             <NotificationPanel onClose={() => setShowNotifications(false)} />
           )}
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

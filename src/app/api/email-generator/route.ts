@@ -7,8 +7,6 @@ import os from 'os';
 // Helper function to run a command and get its output
 async function runCommand(command: string, args: string[], options: any = {}): Promise<string> {
   return new Promise((resolve, reject) => {
-    console.log(`Running command: ${command} ${args.join(' ')}`);
-    
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
@@ -26,15 +24,11 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     let stderr = '';
 
     proc.stdout.on('data', (data) => {
-      const output = data.toString();
-      console.log(output);
-      stdout += output;
+      stdout += data.toString();
     });
 
     proc.stderr.on('data', (data) => {
-      const error = data.toString();
-      console.error(error);
-      stderr += error;
+      stderr += data.toString();
     });
 
     proc.on('close', (code) => {
@@ -49,7 +43,6 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     });
 
     proc.on('error', (err) => {
-      console.error(`Process error: ${err.message}`);
       (err as any).stderr = stderr;
       (err as any).stdout = stdout;
       reject(err);
@@ -61,6 +54,33 @@ async function runCommand(command: string, args: string[], options: any = {}): P
 async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
   try {
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    
+    // Special handling for langchain_google_genai which might have Pydantic compatibility issues during check
+    if (packageName === 'langchain_google_genai') {
+      // We'll skip the check and assume it's installed if we've previously installed it
+      const localPythonPath = process.env.PYTHONPATH || '';
+      const userSitePackages = process.platform === 'win32' ? 
+        path.join(os.homedir(), 'AppData', 'Roaming', 'Python', 'Python311', 'site-packages') :
+        path.join(os.homedir(), '.local', 'lib', 'python3.11', 'site-packages');
+      
+      // Look for package files rather than trying to import the package
+      const possiblePaths = [
+        path.join(userSitePackages, 'langchain_google_genai'),
+        path.join(userSitePackages, 'langchain-google-genai.dist-info'),
+        path.join(userSitePackages, 'langchain_google_genai.egg-info')
+      ];
+      
+      for (const pkgPath of possiblePaths) {
+        if (fs.existsSync(pkgPath)) {
+          return true;
+        }
+      }
+      
+      // If we don't find it, we'll install it anyway to be safe
+      return false;
+    }
+    
+    // For other packages, use the regular check
     const command = `${pythonCommand} -c "import ${packageName.split('==')[0].split('>=')[0]}; print('Package found')"`;
     
     const { stdout, stderr } = await new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
@@ -75,10 +95,34 @@ async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
   }
 }
 
+// Check if Python is correctly installed and accessible
+async function verifyPythonInstallation(): Promise<boolean> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const { stdout } = await new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
+      exec(`${pythonCommand} --version`, (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({ stdout, stderr });
+        }
+      });
+    });
+    
+    return true;
+  } catch (error: any) {
+    return false;
+  }
+}
+
 // Direct Python script execution with safer dependency checking
 async function ensurePythonDependencies(scriptDir: string): Promise<void> {
   try {
-    console.log('Checking Python dependencies...');
+    // First verify Python is installed
+    const pythonInstalled = await verifyPythonInstallation();
+    if (!pythonInstalled) {
+      throw new Error('Python is not properly installed or accessible');
+    }
     
     // Define required packages directly
     const requiredPackages = [
@@ -89,192 +133,194 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
       "google-generativeai"
     ];
 
-    // Check which packages need to be installed
-    const missingPackages: string[] = [];
+    // For safety, always ensure langchain-google-genai is installed/updated
+    // to avoid the Pydantic compatibility issues
+    const packagesToInstall = ["langchain-google-genai==0.0.11"];
+    
+    // Check which other packages need to be installed
     for (const pkg of requiredPackages) {
+      if (pkg !== "langchain_google_genai") { // We already added this one
       const simpleName = pkg.split('-').join('_'); // convert dash to underscore for import
       const isInstalled = await isPythonPackageInstalled(simpleName);
       if (!isInstalled) {
-        // Map the import name back to the package name for installation
-        const fullPackageName = pkg === "langchain_google_genai" ? "langchain-google-genai==0.0.6" : pkg;
-        missingPackages.push(fullPackageName);
+          packagesToInstall.push(pkg);
+        }
       }
     }
 
-    // Only install missing packages
-    if (missingPackages.length > 0) {
-      console.log(`Installing missing packages: ${missingPackages.join(', ')}`);
-      
+    // Install packages if needed
+    if (packagesToInstall.length > 0) {
       // Use --user flag to avoid permission issues
-      const pipArgs = ['install', '--user', '--upgrade', ...missingPackages];
-      await runCommand('pip', pipArgs, { cwd: scriptDir });
+      const pipArgs = ['install', '--user', '--upgrade', ...packagesToInstall];
       
-      console.log('Dependencies installed successfully');
-    } else {
-      console.log('All required packages already installed');
+      try {
+        await runCommand('pip', pipArgs, { cwd: scriptDir });
+      } catch (pipError) {
+        // Try with python -m pip as a fallback
+        const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+        await runCommand(pythonCommand, ['-m', 'pip', ...pipArgs], { cwd: scriptDir });
+      }
     }
-  } catch (error) {
-    console.warn('Warning: Issues with dependency installation:', error);
-    // Continue anyway, as dependencies might be installed but not detected properly
+    
+    // Create or update the compatibility patch files
+    await ensureCompatibilityFiles(scriptDir);
+  } catch (error: any) {
+    // Rethrow with enhanced info
+    throw new Error(`Python dependency error: ${error.message}`);
   }
 }
 
-// Run the email generator with proper error handling
-async function runEmailGenerator(scriptPath: string, promptFile: string, scriptDir: string): Promise<string> {
-  const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+// Function to ensure compatibility files exist
+async function ensureCompatibilityFiles(scriptDir: string): Promise<void> {
+  // Only create these files if they don't already exist
+  const pydanticPatchPath = path.join(scriptDir, 'pydantic_patch.py');
+  const simplePatchPath = path.join(scriptDir, 'simple_patch.py');
+  const versionCompatPath = path.join(scriptDir, 'version_compat.py');
   
-  // First run with simple command to check for Python availability
-  try {
-    console.log('Checking Python installation...');
-    await runCommand(pythonCommand, ['--version'], { cwd: scriptDir });
-  } catch (error) {
-    throw new Error(`Python is not installed or not in PATH: ${(error as Error).message}`);
-  }
+  // Check if files exist with correct content
+  let needsUpdate = false;
   
-  // Then run the generator script
   try {
-    console.log('Running email generator script...');
-    return await runCommand(
-      pythonCommand,
-      [scriptPath, promptFile],
-      { cwd: scriptDir }
-    );
-  } catch (error) {
-    // Enhance error with debugging info
-    let errorMessage = (error as Error).message;
-    if (errorMessage.includes('ModuleNotFoundError')) {
-      errorMessage += ' - Try restarting the server after installing Python packages.';
+    // Only update if files don't exist
+    if (!fs.existsSync(pydanticPatchPath) || 
+        !fs.existsSync(simplePatchPath) || 
+        !fs.existsSync(versionCompatPath)) {
+      needsUpdate = true;
     }
-    throw new Error(`Failed to generate email: ${errorMessage}`);
+    
+    if (needsUpdate) {
+      // The files will be created or updated with proper content
+      // This is minimal code to check SecretStr issue and patch it
+      const simplePatchContent = fs.readFileSync(path.join(process.cwd(), 'Email_Generator_Agent', 'simple_patch.py'), 'utf8');
+      fs.writeFileSync(simplePatchPath, simplePatchContent);
+      
+      const pydanticPatchContent = fs.readFileSync(path.join(process.cwd(), 'Email_Generator_Agent', 'pydantic_patch.py'), 'utf8');
+      fs.writeFileSync(pydanticPatchPath, pydanticPatchContent);
+      
+      const versionCompatContent = fs.readFileSync(path.join(process.cwd(), 'Email_Generator_Agent', 'version_compat.py'), 'utf8');
+      fs.writeFileSync(versionCompatPath, versionCompatContent);
+    }
+  } catch (error: any) {
+    throw new Error(`Failed to ensure compatibility files: ${error.message}`);
+  }
+}
+
+// Run the email generator Python script
+async function runEmailGenerator(scriptPath: string, promptFile: string, scriptDir: string): Promise<string> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    
+    // Run the Python script with the prompt file as argument
+    return await runCommand(pythonCommand, [scriptPath, promptFile], {
+      cwd: scriptDir,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: 'utf-8',
+        PYTHONUNBUFFERED: '1' // Prevent Python from buffering output
+      }
+    });
+  } catch (error: any) {
+    if (error.stderr && error.stderr.includes('ModuleNotFoundError')) {
+      // Missing Python module error
+      throw new Error(`Missing Python module: ${error.stderr}`);
+    } else if (error.stderr && error.stderr.includes('API key')) {
+      // API key error
+      throw new Error('Google API Key is missing or invalid');
+    } else if (error.message.includes('ENOENT') || !error.stderr) {
+      // Python not found
+      throw new Error('Python is not properly installed or accessible');
+    } else {
+      // Other errors
+      throw new Error(`Failed to run email generator: ${error.message}`);
+    }
   }
 }
 
 export async function POST(req: NextRequest) {
+  let tempDir = '';
+  
   try {
-    const { prompt } = await req.json();
+    // Get prompt from request body
+    const body = await req.json();
+    const prompt = body.prompt;
     
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'Missing prompt parameter' }, 
-        { status: 400 }
-      );
+    if (!prompt || typeof prompt !== 'string') {
+      return NextResponse.json({ message: 'Invalid prompt' }, { status: 400 });
     }
 
-    // Create a temporary file to store the prompt
-    const tempDir = os.tmpdir();
-    const promptFile = path.join(tempDir, `email_prompt_${Date.now()}.txt`);
-    fs.writeFileSync(promptFile, prompt, 'utf8');
-
-    // Python script paths
+    // Create temp directory for processing
+    tempDir = path.join(os.tmpdir(), 'email-generator-' + Date.now());
+    fs.mkdirSync(tempDir, { recursive: true });
+    const promptFilePath = path.join(tempDir, 'prompt.txt');
+    
+    // Write prompt to temp file
+    fs.writeFileSync(promptFilePath, prompt, 'utf8');
+    
+    // Path to the email generator script
     const scriptDir = path.join(process.cwd(), 'Email_Generator_Agent');
-    const generatorPath = path.join(scriptDir, 'email_generator.py');
-    const envPath = path.join(scriptDir, '.env');
+    const scriptPath = path.join(scriptDir, 'email_generator.py');
     
-    // Check if script exists
-    if (!fs.existsSync(generatorPath)) {
-      return NextResponse.json(
-        { error: 'Email generator script not found', message: `Script not found: ${generatorPath}` }, 
-        { status: 404 }
-      );
-    }
-    
-    // Check for API key in .env file
-    let hasValidApiKey = false;
-    if (fs.existsSync(envPath)) {
-      try {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const apiKeyMatch = envContent.match(/GOOGLE_API_KEY=([^\s]+)/);
-        const apiKey = apiKeyMatch ? apiKeyMatch[1] : null;
-        hasValidApiKey = Boolean(apiKey && apiKey !== 'your-google-api-key-here');
-      } catch (err) {
-        console.warn('Error reading .env file:', err);
-      }
-    }
-    
-    // If no valid API key found, return an error immediately
-    if (!hasValidApiKey) {
-      return NextResponse.json(
-        { 
-          error: 'Missing or invalid API key', 
-          message: 'Google API key is missing or invalid in .env file.',
-          isApiKeyError: true
-        },
-        { status: 400 }
-      );
+    // Check if the script exists
+    if (!fs.existsSync(scriptPath)) {
+      return NextResponse.json({ message: 'Email generator script not found' }, { status: 500 });
     }
     
     try {
-      console.log('Starting email generation process...');
-      
-      // First, ensure dependencies are installed
+      // Ensure Python is installed with all required dependencies
       await ensurePythonDependencies(scriptDir);
       
-      // Then run the generator script directly with Python
-      const output = await runEmailGenerator(generatorPath, promptFile, scriptDir);
+      // Run the email generator script
+      const output = await runEmailGenerator(scriptPath, promptFilePath, scriptDir);
       
-      // Extract the email content from the output
+      // Extract and format the email content from the output
       const emailContent = extractEmailContent(output);
+      const formattedEmail = cleanAndFormatEmail(emailContent);
       
-      // Clean up temporary file
-      try {
-        if (fs.existsSync(promptFile)) {
-          fs.unlinkSync(promptFile);
-        }
-      } catch (e) {
-        console.warn('Warning: Failed to delete temporary file:', e);
+      // Return the formatted email content
+      return NextResponse.json({ emailContent: formattedEmail });
+    } catch (error: any) {
+      let isPythonError = false;
+      let isApiKeyError = false;
+      let isPydanticError = false;
+      let setupRequired = false;
+      let message = error.message || 'An unexpected error occurred';
+      
+      // Check for specific error types
+      if (message.includes('Python') || 
+          message.includes('ModuleNotFound') || 
+          message.includes('pip') ||
+          message.includes('dependency')) {
+        isPythonError = true;
+        setupRequired = true;
+      } else if (message.includes('API key') || 
+                message.includes('credentials') || 
+                message.includes('authentication')) {
+        isApiKeyError = true;
+      } else if (message.includes('Pydantic') || 
+                message.includes('_modify_schema') || 
+                message.includes('SecretStr')) {
+        isPydanticError = true;
       }
       
       return NextResponse.json({
-        success: true,
-        emailContent,
-        rawOutput: output
-      });
-    } catch (error) {
-      console.error('Error running email generator:', error);
-      
-      // Capture and log the full error output
-      const errorMsg = (error as Error).message;
-      const errorOutput = typeof error === 'object' && error !== null ? 
-        (error as any).stderr || errorMsg : 
-        errorMsg;
-      
-      console.error('Full error details:', errorOutput);
-      
-      // Special handling for specific errors
-      const isApiKeyError = 
-        errorMsg.includes('API key') || 
-        errorMsg.includes('GOOGLE_API_KEY');
-      
-      // Python installation errors
-      const isPythonError = 
-        errorMsg.includes('Python is not installed') ||
-        errorMsg.includes('not in PATH') ||
-        errorMsg.includes('No module named');
-      
-      // Try to clean up the temp file
+        message,
+        isPythonError,
+        isApiKeyError,
+        isPydanticError,
+        setupRequired
+      }, { status: 500 });
+    } finally {
+      // Clean up temp directory
       try {
-        if (fs.existsSync(promptFile)) {
-          fs.unlinkSync(promptFile);
+        if (tempDir && fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
         }
-      } catch {}
-      
-      return NextResponse.json(
-        { 
-          error: 'Failed to generate email', 
-          message: errorOutput,
-          isApiKeyError,
-          isPythonError,
-          details: `Make sure Python is installed and all dependencies are available. The Google API key should be in the .env file.`
-        },
-        { status: 500 }
-      );
+      } catch (cleanupError) {
+        // Silently continue if cleanup fails
+      }
     }
-  } catch (error) {
-    console.error('Error processing email generation request:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', message: (error as Error).message }, 
-      { status: 500 }
-    );
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message || 'Server error' }, { status: 500 });
   }
 }
 
@@ -282,105 +328,56 @@ export async function POST(req: NextRequest) {
  * Extracts the email content from the script output
  */
 function extractEmailContent(output: string): string {
-  // First check if output is empty or undefined
-  if (!output || typeof output !== 'string') {
-    return 'No email content was generated. Please check the API key and try again.';
+  // Extract the generated email content from the output
+  // Find the markers in the output
+  const startMarker = 'GENERATED EMAIL';
+  const generateEmailStart = output.indexOf(startMarker);
+  
+  if (generateEmailStart === -1) {
+    // If we don't find the marker, return the entire output
+    return output;
   }
   
-  // Look for the email content between the markers
-  const startMarker = '========================================== GENERATED EMAIL ==========================================';
-  const endMarker = '===================================================================================================';
-  
-  // Also check for alternate markers that might be used in the Python script
-  const altStartMarker = 'GENERATED EMAIL';
-  
-  // Try finding the primary markers first
-  let startIndex = output.indexOf(startMarker);
-  
-  // If primary markers not found, try alternate ones
-  if (startIndex === -1) {
-    startIndex = output.indexOf(altStartMarker);
-    // If found, adjust to get past the marker text
-    if (startIndex !== -1) {
-      startIndex = output.indexOf('\n', startIndex) + 1;
-    }
-  } else {
-    // Adjust to get past the marker text for primary marker
-    startIndex = startIndex + startMarker.length;
+  // Find the actual content after the equals line
+  const contentStart = output.indexOf('\n', generateEmailStart) + 1;
+  if (contentStart === 0) {
+    return output;
   }
   
-  // If no markers found at all, return a reasonable portion of the output
-  if (startIndex === -1) {
-    // Look for any content that looks like an email (has common email parts)
-    const emailRegex = /(Dear|To whom it may concern|Hello|Hi|Subject:|Sincerely|Best regards|Thank you|Regards,)/i;
-    const match = output.match(emailRegex);
-    
-    if (match && match.index !== undefined) {
-      // Found something that looks like an email, return from there to the end
-      return cleanAndFormatEmail(output.substring(match.index).trim());
-    }
-    
-    // No email-like content found, just return the whole output
-    return cleanAndFormatEmail(output.trim());
-  }
+  // Extract everything from content start to the end
+  let emailContent = output.substring(contentStart).trim();
   
-  // Look for end marker
-  const endIndex = output.indexOf(endMarker, startIndex);
-  
-  if (endIndex === -1) {
-    // No end marker, return from start to the end of output
-    return cleanAndFormatEmail(output.substring(startIndex).trim());
-  }
-  
-  // Return content between markers
-  return cleanAndFormatEmail(output.substring(startIndex, endIndex).trim());
+  // Return the content
+  return emailContent;
 }
 
 /**
  * Cleans and formats the extracted email content
  */
 function cleanAndFormatEmail(emailContent: string): string {
-  // Remove any ANSI color codes
-  emailContent = emailContent.replace(/\u001b\[\d+(;\d+)*m/g, '');
+  // Clean up any Pydantic or debug messages that might have leaked into the content
+  if (!emailContent) return '';
   
-  // Remove any excessive newlines (more than 2 consecutive)
-  emailContent = emailContent.replace(/\n{3,}/g, '\n\n');
-  
-  // Ensure proper spacing after punctuation
-  emailContent = emailContent.replace(/([.!?])(?=\S)/g, '$1 ');
-  
-  // Remove any hardcoded date (October 26, 2023)
-  emailContent = emailContent.replace(/October 26,\s*2023/g, '');
-  
-  // Ensure paragraphs are properly separated
-  const paragraphs = emailContent.split('\n\n');
-  const formattedParagraphs = paragraphs.map(p => p.trim()).filter(p => p.length > 0);
-  
-  // Add proper date format with current date and time
-  if (!emailContent.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) && 
-      !emailContent.match(/^\w+,\s+\w+\s+\d{1,2},\s+\d{4}/)) {
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric'
-    });
+  // Remove any debug lines
+  let cleanedEmail = emailContent
+    .replace(/Debug: .*$/gm, '')
+    .replace(/Warning: .*$/gm, '')
+    .replace(/Pydantic .*$/gm, '')
+    .replace(/^.*pydantic.*$/gm, '')
+    .replace(/.*langchain.*$/gm, '')
+    .replace(/.*_modify_schema_.*$/gm, '')
+    .replace(/For further information.*errors\.pydantic\.dev.*$/gm, '');
     
-    // Add time to the date format
-    const formattedTime = today.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-    
-    const dateTimeString = `${formattedDate} at ${formattedTime}`;
-    
-    // Only add date if it doesn't seem to start with one already
-    if (!emailContent.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i)) {
-      emailContent = dateTimeString + '\n\n' + emailContent;
-    }
-  }
+  // Trim leading/trailing whitespace and normalize newlines
+  cleanedEmail = cleanedEmail.trim().replace(/\r\n/g, '\n');
   
-  return emailContent;
+  // Ensure consistent paragraph spacing
+  cleanedEmail = cleanedEmail.replace(/\n{3,}/g, '\n\n');
+  
+  // Remove any leading/trailing boilerplate text that might have leaked in
+  cleanedEmail = cleanedEmail
+    .replace(/^Thank you for using Email Generator AI.*$/m, '')
+    .replace(/^Email Generator AI terminated.*$/m, '');
+  
+  return cleanedEmail;
 } 
