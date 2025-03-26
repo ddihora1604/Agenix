@@ -259,7 +259,7 @@ const AgentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get the sidebar state
-  const { setShowEmailGenerator } = useSidebarState();
+  const { setShowEmailGenerator, setShowDocumentSummarizer } = useSidebarState();
   
   // Update search query after debounce
   useEffect(() => {
@@ -275,7 +275,7 @@ const AgentsPage: React.FC = () => {
       name: 'General',
       agents: [
         { id: 'professional_email_writer', name: 'Professional Email Writer', description: 'Craft professional business emails for various contexts', icon: Mail, category: 'General' },
-        { id: 'user_persona_builder', name: 'User Persona Builder', description: 'Create detailed user personas for marketing and UX research', icon: Users, category: 'General' },
+        { id: 'user_persona_builder', name: 'Document Summarizer', description: 'Analyze and summarize documents, extracting key insights and information', icon: Users, category: 'General' },
         { id: 'image_generator', name: 'Image Generator', description: 'Generate creative images based on text descriptions', icon: Image, category: 'General' },
         { id: 'ecommerce_product_description', name: 'E-commerce Product Description Enhancer', description: 'Enhance product descriptions for better conversions', icon: ShoppingCart, category: 'General' },
         { id: 'youtube_summarizer', name: 'YouTube Video Summarizer', description: 'Create concise summaries of YouTube video content', icon: Youtube, category: 'General' },
@@ -424,6 +424,10 @@ const AgentsPage: React.FC = () => {
       // Set the showEmailGenerator state to true before navigating
       setShowEmailGenerator(true);
       router.push('/agents/email-writer');
+    } else if (agentId === 'user_persona_builder') {
+      // Set the showDocumentSummarizer state to true before navigating
+      setShowDocumentSummarizer(true);
+      router.push('/agents/document-summarizer');
     } else {
       // For future implementations of other agents
       console.log(`Configure clicked for agent: ${agentId}`);

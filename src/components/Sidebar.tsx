@@ -16,12 +16,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
-import { motion } from 'framer-motion';
 import { useProfilePanel } from '@/hooks/use-profile-panel';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, showEmailGenerator } = useSidebarState();
+  const { sidebarCollapsed, toggleSidebar, showEmailGenerator, showDocumentSummarizer } = useSidebarState();
   const { toggleProfilePanel } = useProfilePanel();
   const router = useRouter();
   
@@ -29,9 +28,10 @@ const Sidebar: React.FC = () => {
     { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Box, label: 'AI Agents', path: '/agents', 
-      subItems: showEmailGenerator ? [
-        { label: 'Email Generation Agent', path: '/agents/email-writer' }
-      ] : []
+      subItems: [
+        ...(showEmailGenerator ? [{ label: 'Email Generation', path: '/agents/email-writer' }] : []),
+        ...(showDocumentSummarizer ? [{ label: 'Document Summarizer', path: '/agents/document-summarizer' }] : [])
+      ].filter(item => item) // Filter out empty items
     },
     { icon: BookOpen, label: 'Documentation', path: '/documentation' },
     { icon: HelpCircle, label: 'Support', path: '/support' },
@@ -49,25 +49,23 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <motion.aside 
+    <aside 
       className={cn(
         "fixed left-0 top-0 h-screen bg-white dark:bg-gray-900/95 border-r border-gray-200/80 dark:border-gray-800/80 z-30 backdrop-blur-sm shadow-md",
         sidebarCollapsed ? "w-20" : "w-64"
       )}
-      initial={false}
-      animate={{ width: sidebarCollapsed ? 80 : 256 }}
-      transition={{ 
-        duration: 0.2,
-        ease: [0.25, 0.1, 0.25, 1.0] // cubic-bezier easing
+      style={{
+        transition: "width 0.2s cubic-bezier(0.25, 0.1, 0.25, 1.0)"
       }}
     >
       <div className="flex flex-col h-full bg-gradient-to-b from-transparent via-transparent to-pink-50/30 dark:to-pink-950/20">
         <div className="p-4 border-b border-gray-200/80 dark:border-gray-800/80 flex justify-between items-center bg-gradient-to-r from-blue-50/50 to-pink-50/50 dark:from-blue-950/30 dark:to-pink-950/30">
-          <motion.div 
-            initial={false}
-            animate={{ opacity: sidebarCollapsed ? 0 : 1 }}
-            transition={{ duration: 0.2 }}
+          <div 
             className={cn("overflow-hidden", sidebarCollapsed ? "w-0" : "w-full")}
+            style={{ 
+              opacity: sidebarCollapsed ? 0 : 1,
+              transition: "opacity 0.2s, width 0.2s"
+            }}
           >
             {!sidebarCollapsed && (
               <div 
@@ -87,16 +85,14 @@ const Sidebar: React.FC = () => {
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
           
-          <motion.div 
-            initial={false}
-            animate={{ 
-              opacity: sidebarCollapsed ? 1 : 0,
-              width: sidebarCollapsed ? 'auto' : 0 
-            }}
-            transition={{ duration: 0.2 }}
+          <div
             className={`flex justify-center ${sidebarCollapsed ? 'w-full' : 'w-0'} overflow-hidden`}
+            style={{ 
+              opacity: sidebarCollapsed ? 1 : 0,
+              transition: "opacity 0.2s, width 0.2s"
+            }}
           >
             {sidebarCollapsed && (
               <div 
@@ -113,7 +109,7 @@ const Sidebar: React.FC = () => {
                 />
               </div>
             )}
-          </motion.div>
+          </div>
         </div>
         
         <nav className="flex-1 overflow-y-auto py-5 px-2">
@@ -153,19 +149,13 @@ const Sidebar: React.FC = () => {
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                     </div>
                     
-                    <motion.span 
-                      initial={false}
-                      animate={{ 
-                        opacity: sidebarCollapsed ? 0 : 1,
-                        width: sidebarCollapsed ? 0 : 'auto' 
-                      }}
-                      transition={{ duration: 0.2 }}
+                    <span 
                       className={cn("whitespace-nowrap", 
                         sidebarCollapsed ? "w-0 overflow-hidden" : "w-auto"
                       )}
                     >
                       {!sidebarCollapsed && item.label}
-                    </motion.span>
+                    </span>
                     {!sidebarCollapsed && (isActive || hasActiveSubItem) && (
                       <div className="ml-auto h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-pink-500"></div>
                     )}
@@ -207,9 +197,7 @@ const Sidebar: React.FC = () => {
           </ul>
         </nav>
 
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -217,14 +205,12 @@ const Sidebar: React.FC = () => {
           }}
           className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-600 to-pink-600 text-white p-1.5 rounded-full shadow-md hover:from-blue-700 hover:to-pink-700 transition-colors z-50"
         >
-          <motion.div
-            initial={false}
-            animate={{ rotate: sidebarCollapsed ? 0 : 180 }}
-            transition={{ duration: 0.2 }}
+          <div
+            className={`transform transition-transform duration-200 ${sidebarCollapsed ? 'rotate-0' : 'rotate-180'}`}
           >
             <ChevronRight className="h-4 w-4" />
-          </motion.div>
-        </motion.button>
+          </div>
+        </button>
 
         <div className="p-4 mt-auto border-t border-gray-200/80 dark:border-gray-800/80 bg-gradient-to-r from-blue-50/50 to-pink-50/50 dark:from-blue-950/30 dark:to-pink-950/30">
           <div 
@@ -239,14 +225,7 @@ const Sidebar: React.FC = () => {
               DD
             </div>
             
-            <motion.div 
-              initial={false}
-              animate={{ 
-                opacity: sidebarCollapsed ? 0 : 1,
-                width: sidebarCollapsed ? 0 : 'auto',
-                marginLeft: sidebarCollapsed ? 0 : 12
-              }}
-              transition={{ duration: 0.2 }}
+            <div 
               className={cn(
                 "overflow-hidden flex-grow",
                 sidebarCollapsed ? "w-0" : "w-auto ml-3"
@@ -263,11 +242,11 @@ const Sidebar: React.FC = () => {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
-    </motion.aside>
+    </aside>
   );
 };
 

@@ -2,20 +2,23 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
-type SidebarContextType = {
+interface SidebarState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   showEmailGenerator: boolean;
   setShowEmailGenerator: (show: boolean) => void;
-};
+  showDocumentSummarizer: boolean;
+  setShowDocumentSummarizer: (show: boolean) => void;
+}
 
-const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
 
-export function SidebarProvider({ children }: { children: React.ReactNode }) {
+export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check local storage for persisted sidebar state (collapsed)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   // Make showEmailGenerator persistent by storing in localStorage
   const [showEmailGenerator, setShowEmailGenerator] = useState<boolean>(false);
+  const [showDocumentSummarizer, setShowDocumentSummarizer] = useState(false);
 
   // Load sidebar states from localStorage on mount
   useEffect(() => {
@@ -28,6 +31,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     const storedEmailGenValue = localStorage.getItem('showEmailGenerator');
     if (storedEmailGenValue !== null) {
       setShowEmailGenerator(storedEmailGenValue === 'true');
+    }
+    
+    // Load showDocumentSummarizer state from localStorage
+    const storedDocSummarizerValue = localStorage.getItem('showDocumentSummarizer');
+    if (storedDocSummarizerValue !== null) {
+      setShowDocumentSummarizer(storedDocSummarizerValue === 'true');
     }
   }, []);
 
@@ -42,6 +51,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     setShowEmailGenerator(show);
     localStorage.setItem('showEmailGenerator', String(show));
   };
+  
+  // Update the setShowDocumentSummarizer function to persist state
+  const persistentSetShowDocumentSummarizer = (show: boolean) => {
+    setShowDocumentSummarizer(show);
+    localStorage.setItem('showDocumentSummarizer', String(show));
+  };
 
   return (
     <SidebarContext.Provider 
@@ -49,13 +64,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         sidebarCollapsed, 
         toggleSidebar,
         showEmailGenerator,
-        setShowEmailGenerator: persistentSetShowEmailGenerator
+        setShowEmailGenerator: persistentSetShowEmailGenerator,
+        showDocumentSummarizer,
+        setShowDocumentSummarizer: persistentSetShowDocumentSummarizer
       }}
     >
       {children}
     </SidebarContext.Provider>
   );
-}
+};
 
 export function useSidebarState() {
   const context = useContext(SidebarContext);

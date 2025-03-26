@@ -2,13 +2,39 @@ import os
 import sys
 from datetime import datetime
 
-# Detailed error handling for imports
+# Import the pydantic patch modules with fallbacks
 try:
     # Add debugging information
     print(f"Python version: {sys.version}")
     print(f"Python executable: {sys.executable}")
     print(f"Current working directory: {os.getcwd()}")
     
+    # Get the directory of this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    print(f"Script directory: {script_dir}")
+    
+    # First try a simple direct patch approach
+    try:
+        # Add the script directory to Python path to ensure imports work
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+        
+        print("Attempting to apply simple direct Pydantic patch...")
+        import simple_patch
+        print("Successfully applied simple Pydantic patch")
+    except Exception as simple_patch_error:
+        print(f"Warning: Simple patch failed: {simple_patch_error}")
+        
+        # Try the advanced patch as fallback (with import hooks)
+        try:
+            print("Attempting to apply advanced Pydantic patch...")
+            import pydantic_patch
+            print("Successfully applied advanced Pydantic patch")
+        except Exception as advanced_patch_error:
+            print(f"Warning: Advanced patch failed: {advanced_patch_error}")
+            print("Continuing without patching, which may cause issues with newer Pydantic versions")
+    
+    # Continue with the rest of the imports
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
         print("Successfully imported langchain_google_genai")
@@ -110,7 +136,7 @@ def print_email(email_content):
     """Print the generated email with formatting."""
     print(f"\n{Fore.GREEN}{'=' * 40} GENERATED EMAIL {'=' * 40}{Style.RESET_ALL}\n")
     print(email_content)
-    print(f"\n{Fore.GREEN}{'=' * 93}{Style.RESET_ALL}\n")
+    print("\n")
 
 def get_user_input(prompt_text):
     """Get user input with colored prompt."""

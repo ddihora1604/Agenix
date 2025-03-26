@@ -1,9 +1,0 @@
-streamlit 
-transformers 
-torch 
-diffusers 
-pillow 
-requests
-mediapipe
-torchvision 
-opencv-python

@@ -12,7 +12,7 @@ const agentCategories = [
     name: 'General Independent Agents',
     icon: PackageOpen,
     agents: [
-      { id: 'user_persona_builder', name: 'User Persona Builder' },
+      { id: 'document_summarizer', name: 'Document Summarizer' },
       { id: 'image_generator', name: 'Image Generator' },
       { id: 'ecommerce_description', name: 'E-commerce Product Description Enhancer' },
       { id: 'youtube_summarizer', name: 'YouTube Video Summarizer' },
@@ -87,28 +87,28 @@ const agentCategories = [
 const agentDocs = {
   // General Independent Agents
   user_persona_builder: {
-    title: 'User Persona Builder',
-    description: 'An AI-powered tool that generates detailed, realistic user personas based on input data such as target demographics, behaviors, and preferences.',
+    title: 'Document Summarizer',
+    description: 'An AI-powered tool that analyzes and summarizes documents, extracting key insights and information for improved comprehension and decision-making.',
     useCases: [
-      'Marketing campaign planning',
-      'Product design and development',
-      'User experience research',
-      'Target audience analysis',
+      'Research document analysis',
+      'Business report summarization',
+      'Academic paper review',
+      'Legal document analysis',
       'Content strategy development'
     ],
-    implementation: `The User Persona Builder analyzes input data using natural language processing to identify patterns and create comprehensive user profiles. It combines demographic information with behavioral insights to generate personas that include goals, pain points, motivations, and decision-making factors.`,
+    implementation: `The Document Summarizer analyzes input data using natural language processing to identify patterns and extract key information. It combines semantic understanding with contextual awareness to generate comprehensive summaries that retain the essential points of the original document.`,
     apiReference: [
       {
-        endpoint: '/api/agents/persona-builder',
+        endpoint: '/api/agents/document-summarizer',
         method: 'POST',
-        description: 'Generates a user persona based on provided data',
+        description: 'Generates a summary of the provided document',
         requestParams: [
-          { name: 'demographics', type: 'object', description: 'Age, location, gender, income, etc.' },
-          { name: 'behaviors', type: 'array', description: 'Online activities, shopping habits, etc.' },
-          { name: 'preferences', type: 'array', description: 'Brand preferences, product interests, etc.' },
-          { name: 'goals', type: 'array', description: 'Personal and professional objectives' }
+          { name: 'document', type: 'string', description: 'Text content or document URL to summarize' },
+          { name: 'format', type: 'string', description: 'Desired summary format (brief, detailed, bullet-points)' },
+          { name: 'maxLength', type: 'number', description: 'Maximum length of the summary in words or characters' },
+          { name: 'focusAreas', type: 'array', description: 'Specific topics or sections to focus on (optional)' }
         ],
-        responseFormat: 'Returns a JSON object containing the complete user persona'
+        responseFormat: 'Returns a JSON object containing the document summary and key insights'
       }
     ],
     codeSnippets: [
@@ -117,42 +117,28 @@ const agentDocs = {
         label: 'JavaScript/Node.js',
         code: `const axios = require('axios');
 
-async function generateUserPersona() {
+async function summarizeDocument() {
   try {
-    const response = await axios.post('https://api.aiagents.com/persona-builder', {
-      demographics: {
-        ageRange: '25-34',
-        location: 'Urban',
-        gender: 'Female',
-        income: 'Middle-high',
-        education: 'Bachelor degree'
-      },
-      behaviors: [
-        'Shops online 2-3 times per week',
-        'Active on Instagram and TikTok',
-        'Uses mobile devices for most online activities'
-      ],
-      preferences: [
-        'Prefers sustainable brands',
-        'Values quality over price',
-        'Early adopter of new technologies'
-      ],
-      goals: [
-        'Career advancement',
-        'Work-life balance',
-        'Building social connections'
+    const response = await axios.post('https://api.aiagents.com/document-summarizer', {
+      document: "https://example.com/sample-report.pdf",
+      format: "detailed",
+      maxLength: 500,
+      focusAreas: [
+        "Executive summary",
+        "Financial projections",
+        "Key recommendations"
       ]
     });
     
     console.log(response.data);
     return response.data;
   } catch (error) {
-    console.error('Error generating persona:', error);
+    console.error('Error summarizing document:', error);
   }
 }
 
 // Call the function
-generateUserPersona();`
+summarizeDocument();`
       },
       {
         language: 'python',
@@ -160,32 +146,18 @@ generateUserPersona();`
         code: `import requests
 import json
 
-def generate_user_persona():
+def summarize_document():
     try:
-        url = "https://api.aiagents.com/persona-builder"
+        url = "https://api.aiagents.com/document-summarizer"
         
         payload = {
-            "demographics": {
-                "ageRange": "25-34",
-                "location": "Urban",
-                "gender": "Female",
-                "income": "Middle-high",
-                "education": "Bachelor degree"
-            },
-            "behaviors": [
-                "Shops online 2-3 times per week",
-                "Active on Instagram and TikTok",
-                "Uses mobile devices for most online activities"
-            ],
-            "preferences": [
-                "Prefers sustainable brands",
-                "Values quality over price",
-                "Early adopter of new technologies"
-            ],
-            "goals": [
-                "Career advancement",
-                "Work-life balance",
-                "Building social connections"
+            "document": "https://example.com/sample-report.pdf",
+            "format": "detailed",
+            "maxLength": 500,
+            "focusAreas": [
+                "Executive summary",
+                "Financial projections",
+                "Key recommendations"
             ]
         }
         
@@ -198,24 +170,24 @@ def generate_user_persona():
         
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Error generating persona: {e}")
+        print(f"Error summarizing document: {e}")
         return None
 
 # Call the function
-persona = generate_user_persona()
-print(persona)`
+summary = summarize_document()
+print(summary)`
       }
     ],
     externalResources: [
       {
-        title: 'User Persona Best Practices',
-        url: 'https://example.com/user-persona-best-practices',
-        description: 'Learn about effective ways to utilize user personas in your product development'
+        title: 'Document Summarization Best Practices',
+        url: 'https://example.com/document-summarization-best-practices',
+        description: 'Learn about effective techniques for document summarization'
       },
       {
-        title: 'Persona Builder API Documentation',
-        url: 'https://example.com/persona-builder-api',
-        description: 'Full API reference for the User Persona Builder'
+        title: 'Document Summarizer API Documentation',
+        url: 'https://example.com/document-summarizer-api',
+        description: 'Full API reference for the Document Summarizer'
       }
     ]
   },
@@ -470,7 +442,7 @@ analyze_competitors()`
 const DocumentationPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('general');
-  const [selectedAgent, setSelectedAgent] = useState('user_persona_builder');
+  const [selectedAgent, setSelectedAgent] = useState('document_summarizer');
   const [activeTab, setActiveTab] = useState('overview');
   const [copiedSnippet, setCopiedSnippet] = useState<number | null>(null);
 
