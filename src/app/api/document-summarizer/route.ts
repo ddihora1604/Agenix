@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -15,161 +15,316 @@ function getUuid() {
 const execPromise = promisify(exec);
 
 // Use the specific Python executable path where dependencies are installed
-const PYTHON_PATH = 'C:\\Users\\ddihora1604\\AppData\\Local\\Programs\\Python\\Python311\\python.exe';
+const PYTHON_PATH = process.platform === 'win32'
+  ? 'C:\\Users\\ddihora1604\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
+  : 'python3';
 
 // Increase process timeout to handle large documents
 const PROCESS_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-/**
- * Cleans and formats the summary text for better display
- * 
- * @param text The raw summary text from the Python script
- * @returns Cleaned and formatted summary
- */
-function cleanSummaryText(text: string): string {
-  // First, try to extract the summary using the distinct markers
-  const distinctMarkerRegex = /###SUMMARY_START###\s*([\s\S]+?)\s*###SUMMARY_END###/;
-  const distinctMarkerMatch = text.match(distinctMarkerRegex);
-  
-  if (distinctMarkerMatch && distinctMarkerMatch[1]) {
-    return formatSummaryText(distinctMarkerMatch[1].trim());
-  }
-  
-  // If the markers aren't found, try older marker formats for backward compatibility
-  const fullMarkerRegex = /DOCUMENT SUMMARY\s*\n=+\s*\n[\s\n]*([\s\S]+?)[\s\n]*\n=+\s*\nEND OF SUMMARY/;
-  const fullMarkerMatch = text.match(fullMarkerRegex);
-  
-  if (fullMarkerMatch && fullMarkerMatch[1]) {
-    return formatSummaryText(fullMarkerMatch[1].trim());
-  }
-  
-  // Check if only the start marker exists (output might have been truncated)
-  const startMarkerRegex = /###SUMMARY_START###\s*([\s\S]+)/;
-  const startMarkerMatch = text.match(startMarkerRegex);
-  
-  if (startMarkerMatch && startMarkerMatch[1] && startMarkerMatch[1].length > 100) {
-    return formatSummaryText(startMarkerMatch[1].trim());
-  }
-  
-  // If no markers found, try to clean the raw output and use it
-  const cleanedText = cleanRawOutput(text);
-  
-  // If the cleaned text seems reasonable, use it
-  if (cleanedText.length > 200 && 
-      !cleanedText.includes("pydantic") && 
-      !cleanedText.includes("Error:") && 
-      !cleanedText.includes("module")) {
-    return formatSummaryText(cleanedText);
-  }
-  
-  // Last resort: find the largest chunk of text that looks like a summary
-  const paragraphs = text.split(/\n{2,}/);
-  const candidateParagraphs = paragraphs
-    .filter(p => 
-      p.length > 100 && 
-      !p.includes("Error") && 
-      !p.includes("WARNING") && 
-      !p.includes("DEBUG") &&
-      !p.includes("pydantic") &&
-      !p.includes("http") &&
-      !p.trim().startsWith("="))
-    .sort((a, b) => b.length - a.length);
+// Custom function to execute Python script with better logging and error handling
+async function executePythonScript(scriptPath: string, filePath: string, options: any = {}): Promise<{stdout: string, stderr: string}> {
+  return new Promise((resolve, reject) => {
+    console.log(`Executing Python script: ${scriptPath} with file: ${filePath}`);
     
-  if (candidateParagraphs.length > 0) {
-    return formatSummaryText(candidateParagraphs[0]);
+    const args = [scriptPath, filePath];
+    
+    // Add additional arguments if provided
+    if (options.summaryLength) {
+      args.push('--summary_length', options.summaryLength);
+    }
+    
+    if (options.focusAreas) {
+      args.push('--focus_areas', options.focusAreas);
+    }
+    
+    if (options.maxPages) {
+      args.push('--max_pages', options.maxPages.toString());
+    }
+    
+    console.log(`Command: ${PYTHON_PATH} ${args.join(' ')}`);
+    
+    const startTime = Date.now();
+    console.log(`Starting Python process at: ${new Date().toISOString()}`);
+    
+    // Use spawn instead of exec for better handling of large outputs
+    const childProcess = spawn(PYTHON_PATH, args, {
+      timeout: PROCESS_TIMEOUT,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: 'utf-8',
+        PYTHONUNBUFFERED: '1'
+      }
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    // For capturing just the summary segment
+    let summaryContent = '';
+    let insideSummaryBlock = false;
+    
+    // Handle standard output
+    childProcess.stdout.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      stdout += chunk;
+      
+      // Check for summary markers to extract just the important content
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.includes('###SUMMARY_START###')) {
+          insideSummaryBlock = true;
+          console.log('Found summary start marker');
+          continue; // Skip the marker line itself
+        }
+        else if (line.includes('###SUMMARY_END###')) {
+          insideSummaryBlock = false;
+          console.log('Found summary end marker');
+          continue; // Skip the marker line itself
+        }
+        
+        // If we're inside the summary section, collect it separately
+        if (insideSummaryBlock) {
+          summaryContent += line + '\n';
+        }
+      }
+    });
+    
+    // Handle standard error for debugging output
+    childProcess.stderr.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      stderr += chunk;
+      
+      // Log error chunks that might contain important information
+      if (chunk.includes('ERROR:') || chunk.includes('Exception:')) {
+        console.error(`Python error: ${chunk.trim()}`);
+      }
+    });
+    
+    // Handle process completion
+    childProcess.on('close', (code: number | null) => {
+      const duration = (Date.now() - startTime) / 1000;
+      console.log(`Python process completed with code ${code} in ${duration.toFixed(2)}s`);
+      
+      if (code !== 0) {
+        console.error(`Process failed with code ${code}`);
+        console.error(`Last stderr lines: ${stderr.split('\n').slice(-5).join('\n')}`);
+        reject(new Error(`Process exited with code ${code}`));
+      } else {
+        // If we extracted summary content specifically, prepend it to stdout
+        // so the summary extraction functions will find it first
+        if (summaryContent.trim().length > 0) {
+          // Add markers to make sure the clean functions can find it
+          const enhancedOutput = `###SUMMARY_START###\n${summaryContent}\n###SUMMARY_END###\n${stdout}`;
+          resolve({ stdout: enhancedOutput, stderr });
+        } else {
+          resolve({ stdout, stderr });
+        }
+      }
+    });
+    
+    // Handle process errors
+    childProcess.on('error', (err: Error) => {
+      console.error(`Failed to start Python process: ${err}`);
+      reject(err);
+    });
+  });
+}
+
+// Improved function to extract and clean summary text from script output
+function cleanSummaryText(text: string): string {
+  // First try to extract summary between markers
+  const markerRegex = /###SUMMARY_START###\s*([\s\S]*?)\s*###SUMMARY_END###/;
+  const markerMatch = text.match(markerRegex);
+  
+  if (markerMatch && markerMatch[1] && markerMatch[1].trim().length > 50) {
+    return formatSummaryText(markerMatch[1]);
   }
   
-  // If we get here, we couldn't find a summary
-  throw new Error("Unable to extract a valid summary from the output");
+  // If no markers or too short content between markers, try another approach
+  // Look for a clear summary section after certain patterns
+  const summaryIndicators = [
+    "SUMMARY:", 
+    "Document Summary:", 
+    "DETAILED SUMMARY:",
+    "Here's a summary of the document:",
+    "Summary of the document:"
+  ];
+  
+  let foundSummary = "";
+  
+  for (const indicator of summaryIndicators) {
+    const indicatorIndex = text.indexOf(indicator);
+    if (indicatorIndex !== -1) {
+      // Extract everything after the indicator
+      const afterIndicator = text.substring(indicatorIndex + indicator.length).trim();
+      // Only use it if it's substantial (over 100 chars)
+      if (afterIndicator.length > 100) {
+        foundSummary = afterIndicator;
+        break;
+      }
+    }
+  }
+  
+  if (foundSummary) {
+    return formatSummaryText(foundSummary);
+  }
+  
+  // If we still don't have a good summary, use the cleanRawOutput function to get the most usable content
+  const cleanedOutput = cleanRawOutput(text);
+  if (cleanedOutput && cleanedOutput.length > 100) {
+    return formatSummaryText(cleanedOutput);
+  }
+  
+  // Last resort, just remove obvious log lines and return what's left
+  return formatSummaryText(text);
 }
 
-/**
- * Cleans raw output by removing logs and debug messages
- */
+// Enhanced function to remove technical output and keep content
 function cleanRawOutput(text: string): string {
-  // First remove specific URLs and common technical messages
-  let cleanText = text.replace(/For further information visit https:\/\/errors\.pydantic\.dev\/.*$/gm, '');
-  cleanText = cleanText.replace(/The script will attempt to run with limited functionality\./g, '');
-  cleanText = cleanText.replace(/LangChain integration not available\. Using direct Google Generative AI\.\.\.$/gm, '');
-  cleanText = cleanText.replace(/Checking LangChain dependencies\.\.\.$/gm, '');
-  cleanText = cleanText.replace(/Warning: Some LangChain dependencies.*$/gm, '');
-  cleanText = cleanText.replace(/Warning: langchain-google-genai.*$/gm, '');
-  cleanText = cleanText.replace(/={10,}/g, ''); // Remove divider lines with 10 or more = characters
+  if (!text) return "";
   
-  // Remove pydantic-related warnings and deprecation notices
-  cleanText = cleanText.replace(/.*LangChainDeprecationWarning:.*$/gm, '');
-  cleanText = cleanText.replace(/.*langchain_core\.pydantic_v1.*$/gm, '');
-  cleanText = cleanText.replace(/.*pydantic\.v1.*$/gm, '');
-  cleanText = cleanText.replace(/.*__modify_schema__.*$/gm, '');
-  cleanText = cleanText.replace(/.*SecretStr.*$/gm, '');
+  // Split by lines to process them
+  const lines = text.split('\n');
   
-  // Remove any Python logging messages or debug information
-  cleanText = cleanText.replace(/^(INFO|WARNING|DEBUG|ERROR|CRITICAL):.*$/gm, '');
+  // Filter out technical lines
+  const contentLines = lines.filter(line => {
+    const trimmedLine = line.trim();
+    
+    // Skip empty lines
+    if (!trimmedLine) return false;
+    
+    // Skip Python errors and debug messages
+    if (trimmedLine.startsWith("Traceback (most recent call last)")) return false;
+    if (/^File ".*", line \d+, in/.test(trimmedLine)) return false;
+    if (/^(DEBUG|INFO|WARNING|ERROR):/.test(trimmedLine)) return false;
+    
+    // Skip progress messages
+    if (/^Extracting text from page/.test(trimmedLine)) return false;
+    if (/^Processing pages/.test(trimmedLine)) return false;
+    if (/^Processed \d+ pages/.test(trimmedLine)) return false;
+    if (/^PDF text extraction completed/.test(trimmedLine)) return false;
+    if (/^Extracted \d+ characters/.test(trimmedLine)) return false;
+    if (/^Using (parallel|sequential) processing/.test(trimmedLine)) return false;
+    
+    // Skip timestamp messages
+    if (/^\[\d{4}-\d{2}-\d{2}/.test(trimmedLine)) return false;
+    
+    // Skip technical messages
+    if (/^Generated summary with \d+ characters/.test(trimmedLine)) return false;
+    if (/^Total processing time:/.test(trimmedLine)) return false;
+    if (/^Summary generation completed/.test(trimmedLine)) return false;
+    if (/^Generating summary/.test(trimmedLine)) return false;
+    if (/^Document chunking completed/.test(trimmedLine)) return false;
+    if (/^PDF loading completed/.test(trimmedLine)) return false;
+    if (/^Vector store creation completed/.test(trimmedLine)) return false;
+    if (/^Initializing Gemini model/.test(trimmedLine)) return false;
+    if (/^Trying model:/.test(trimmedLine)) return false;
+    if (/^Successfully initialized/.test(trimmedLine)) return false;
+    if (/^Split content into/.test(trimmedLine)) return false;
+    if (/^Document is large/.test(trimmedLine)) return false;
+    if (/^Using timeout of/.test(trimmedLine)) return false;
+    
+    // Skip markers
+    if (trimmedLine === "###SUMMARY_START###" || trimmedLine === "###SUMMARY_END###") return false;
+    
+    return true;
+  });
   
-  // Remove any lines with technical details like "Extracted X pages"
-  cleanText = cleanText.replace(/^(Successfully extracted|Split content into|Creating vector|Generating|Using).*$/gm, '');
-  
-  // Remove any lines that appear to be part of LangChain or dependency logs
-  cleanText = cleanText.replace(/^(Using|Loading|Warning|Document sample|Checking|Processing|Summary length).*$/gm, '');
-  
-  // Remove any lines that are just command outputs
-  cleanText = cleanText.replace(/^(Command completed|Focus areas).*$/gm, '');
-  
-  // Remove "Processing PDF" and similar messages
-  cleanText = cleanText.replace(/^Processing PDF:.*$/gm, '');
-  cleanText = cleanText.replace(/^Summary length:.*$/gm, '');
-  cleanText = cleanText.replace(/^Focus areas:.*$/gm, '');
-  
-  // Clean up excess whitespace caused by removing lines
-  cleanText = cleanText.replace(/\n{3,}/g, '\n\n');
-  
-  return cleanText.trim();
+  // Join the remaining lines
+  return contentLines.join('\n').trim();
 }
 
-/**
- * Formats the summary text for better display
- */
+// Improved function to format the summary text for better readability
 function formatSummaryText(text: string): string {
-  // Clean up excessive whitespace and newlines
-  let formattedText = text
-    .replace(/\n{3,}/g, '\n\n')  // Replace 3+ consecutive newlines with just 2
-    .replace(/\s+$/gm, '')       // Remove trailing whitespace from each line
-    .trim();                      // Trim start/end whitespace
+  if (!text) return "";
   
-  // Fix common formatting issues
-  formattedText = formattedText
-    .replace(/•/g, '- ')         // Replace bullet points with dashes
-    .replace(/(\d+)\)/g, '$1. ') // Replace 1) with 1. for consistent list formatting
-    .replace(/\t/g, '  ');       // Replace tabs with spaces
+  // Remove markers if present
+  text = text.replace(/###SUMMARY_START###/g, "")
+             .replace(/###SUMMARY_END###/g, "");
   
-  // Ensure proper paragraph formatting with double newlines
-  formattedText = formattedText
-    .split(/\n{1,}/)                              // Split by any number of newlines
-    .filter(para => para.trim().length > 0)       // Remove empty paragraphs
-    .join('\n\n');                                // Join with double newlines
+  // Normalize bullet points to use consistent style
+  text = text.replace(/^\s*[•\-\*]\s+/gm, "• ");
   
-  return formattedText;
+  // Remove any remaining debug or technical lines
+  text = text.replace(/^(Using|Generated|Generating|Processing|Initializing|Successfully|Document|Created|Started).*$/gm, "");
+  
+  // Handle section headers more carefully
+  // First, ensure they have proper capitalization and format
+  const sectionHeaderRegex = /^([A-Z][A-Z\s]+):(?:\s*)(.*)$/gm;
+  text = text.replace(sectionHeaderRegex, (match, header, content) => {
+    // If content follows the header on the same line, separate it
+    if (content && content.trim()) {
+      return `\n${header}:\n\n${content.trim()}`;
+    }
+    return `\n${header}:\n`;
+  });
+  
+  // Normalize section headers for better formatting
+  text = text.replace(/^([A-Z][A-Z\s]+):\s*$/gm, "\n$1:\n");
+  
+  // Remove excessive whitespace and ensure good paragraph breaks
+  text = text.replace(/\n{3,}/g, "\n\n")        // Replace 3+ consecutive newlines with just 2
+             .replace(/\s+$/gm, "")             // Remove trailing whitespace from each line
+             .replace(/^\s+/gm, "");            // Remove leading whitespace from each line
+  
+  // Ensure proper spacing around bullet points
+  text = text.replace(/(?<!\n)• /g, "\n• ");
+  
+  // Ensure section headers have proper spacing
+  text = text.replace(/([A-Z][A-Z\s]+):\n\n/g, "$1:\n");
+  
+  // Ensure bullet points in the same list stay together
+  text = text.replace(/• (.*)\n\n• /g, "• $1\n• ");
+  
+  // Add breaks between paragraphs for better readability
+  const sentenceEndingRegex = /\.(?=\s+[A-Z])/g;
+  text = text.replace(sentenceEndingRegex, ".\n\n");
+  
+  // Final cleanup of multiple newlines
+  text = text.replace(/\n{3,}/g, "\n\n");
+  
+  return text.trim();
 }
 
-// Add this function to check if stdout contains only debug/error information
+// Function to detect if output only contains debug/technical messages
 function isOutputOnlyDebugMessages(text: string): boolean {
-  // If the text contains these known debug messages but doesn't contain a substantial summary
-  const containsDebugMessages = text.includes('Checking LangChain dependencies') || 
-                                text.includes('pydantic') ||
-                                text.includes('Warning:') ||
-                                text.includes('langchain');
+  // Remove all debug, info, and error messages
+  const cleaned = text.replace(/^(DEBUG|INFO|WARNING|ERROR):.*\n/gm, '')
+                     .replace(/^\[.*?\].*\n/gm, '')
+                     .replace(/^Processed.*pages.*\n/gm, '')
+                     .replace(/^Extracting text.*\n/gm, '')
+                     .replace(/^(Using|Generated|Total|Summary|PDF|Vector|Processing|Document|Created|Initialized|Trying|Successfully|Split).*\n/gm, '')
+                     .trim();
   
-  // Check if there's likely a summary (substantial text after all debug messages)
-  const debugLines = text.split('\n').filter(line => 
-    line.includes('Checking') || 
-    line.includes('Warning:') || 
-    line.includes('pydantic') ||
-    line.includes('langchain') ||
-    line.includes('Processing PDF')
-  );
-  
-  // If there are debug messages and they make up most of the content
-  return containsDebugMessages && debugLines.length > 5 && text.length < 1000;
+  // If there's almost nothing left, it was probably all debug messages
+  return cleaned.length < 100;
+}
+
+// Check if API key exists
+export async function GET(request: NextRequest) {
+  try {
+    // Path to the .env file in the DocSummarizer folder
+    const envFilePath = path.join(process.cwd(), 'DocSummarizer', 'DocSummarizer', '.env');
+    
+    // Check if .env file exists
+    const envFileExists = fs.existsSync(envFilePath);
+    
+    if (envFileExists) {
+      // Read the .env file
+      const envContent = fs.readFileSync(envFilePath, 'utf8');
+      
+      // Check if GOOGLE_API_KEY is in the file
+      const apiKeyExists = envContent.includes('GOOGLE_API_KEY');
+      
+      return NextResponse.json({ exists: apiKeyExists });
+    } else {
+      return NextResponse.json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking API key:', error);
+    return NextResponse.json({ exists: false });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -187,8 +342,11 @@ export async function POST(request: NextRequest) {
     // Get form data with the uploaded file
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    
+    // Parse summary options with fallbacks
     const summaryLength = formData.get('summaryLength') as string || 'medium';
     const focusAreas = formData.get('focusAreas') as string || '';
+    const maxPages = formData.get('maxPages') ? parseInt(formData.get('maxPages') as string) : undefined;
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -199,7 +357,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
     }
     
-    console.log(`Processing file: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    // Check file size (limit to 20MB)
+    const fileSizeMB = file.size / (1024 * 1024);
+    console.log(`Processing file: ${file.name}, Size: ${fileSizeMB.toFixed(2)}MB`);
+    
+    if (fileSizeMB > 20) {
+      return NextResponse.json({ 
+        error: 'File size exceeds 20MB limit. Please upload a smaller file.' 
+      }, { status: 400 });
+    }
     
     // Save file to temp directory
     const filePath = path.join(tempDir, file.name);
@@ -215,209 +381,144 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Document summarizer script not found' }, { status: 500 });
     }
     
-    // Execute Python script
+    // Map summary length from UI to script options
     let summaryLengthFlag = '';
     switch (summaryLength) {
       case 'short':
-        summaryLengthFlag = '--summary_length brief';
+        summaryLengthFlag = 'brief';
         break;
       case 'medium':
-        summaryLengthFlag = '--summary_length standard';
+        summaryLengthFlag = 'standard';
         break;
       case 'detailed':
-        summaryLengthFlag = '--summary_length comprehensive';
+        summaryLengthFlag = 'comprehensive';
         break;
       default:
-        summaryLengthFlag = '--summary_length standard';
+        summaryLengthFlag = 'standard';
     }
     
-    let focusAreasFlag = '';
-    if (focusAreas) {
-      focusAreasFlag = `--focus_areas "${focusAreas}"`;
-    }
-    
-    const command = `"${PYTHON_PATH}" "${scriptPath}" "${filePath}" ${summaryLengthFlag} ${focusAreasFlag}`;
-    console.log(`Executing command: ${command}`);
-    
-    const startTime = Date.now();
-    
+    // Execute Python script with our custom function
     try {
-      // Use a different execute approach that properly separates stderr and stdout
-      const { stdout, stderr } = await execPromise(command, {
-        // Set maximum buffer size to avoid truncation
-        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-        // Add a timeout to prevent hanging processes
-        timeout: PROCESS_TIMEOUT, // 10 minutes timeout
-        // Ensure environment variables are passed to child process
-        env: { 
-          ...process.env, 
-          PYTHONIOENCODING: 'utf-8',
-          // Add PYTHONUNBUFFERED to ensure Python doesn't buffer output
-          PYTHONUNBUFFERED: '1'
+      console.log(`Starting PDF summarization for ${file.name} (${fileSizeMB.toFixed(2)}MB)`);
+      console.log(`Options: length=${summaryLengthFlag}, focus=${focusAreas || 'none'}, maxPages=${maxPages || 'all'}`);
+      
+      // Execute with more robust handling
+      const { stdout, stderr } = await executePythonScript(
+        scriptPath, 
+        filePath, 
+        {
+          summaryLength: summaryLengthFlag,
+          focusAreas: focusAreas,
+          maxPages: maxPages
         }
-      });
+      );
       
-      const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`Document processing completed in ${elapsedTime} seconds`);
-      
-      // Log the full stderr for debugging (keep this for now)
-      if (stderr) {
-        console.log("Python script stderr output:");
-        console.log(stderr);
-      }
-      
-      // First check stderr for errors, as the Python script writes errors to stderr
-      if (stderr && stderr.includes('ERROR:')) {
-        // Extract the specific error message from stderr
-        const errorMatch = stderr.match(/ERROR:\s*(.+?)(?:\n|$)/);
-        if (errorMatch && errorMatch[1]) {
-          throw new Error(errorMatch[1].trim());
-        }
+      // Check for errors in stderr or stdout
+      if (stderr && (
+        stderr.includes('Error:') || 
+        stderr.includes('Exception:') || 
+        stderr.includes('Traceback') ||
+        stderr.includes('ModuleNotFoundError')
+      )) {
+        console.error("Script executed with errors:");
         
-        // If no specific error message found, check for standard error patterns
-        if (stderr.includes('ModuleNotFoundError')) {
-          const missingModule = stderr.match(/No module named '([^']+)'/);
-          if (missingModule && missingModule[1]) {
-            throw new Error(`Missing Python module: ${missingModule[1]}. Please install it with pip.`);
-          }
-        }
+        // Extract detailed error message
+        let detailedError = 'Failed to process document. See logs for details.';
         
-        // Check for API key errors
-        if (stderr.includes('GOOGLE_API_KEY') || stderr.includes('API key')) {
-          throw new Error('Google API Key is missing or invalid. Please add a valid API key to your .env file.');
+        if (stderr.includes('GOOGLE_API_KEY not found')) {
+          detailedError = 'Google API Key is missing. Please add a valid API key to your .env file.';
         }
-        
-        // Check for timeout errors
-        if (stderr.includes('timeout') || stderr.toLowerCase().includes('timed out')) {
-          throw new Error('The summarization process timed out. Please try a smaller document or try again later.');
-        }
-        
-        // Generic error fallback
-        throw new Error('An error occurred during PDF processing. Check the Python script output for details.');
-      }
-      
-      // Extract the summary from the output
-      let summary = stdout.trim();
-      
-      // If output starts with "Error:", it's an error message from the direct API method
-      if (summary.startsWith('Error:')) {
-        throw new Error(summary.substring(7));
-      }
-      
-      // If the stdout only contains debug messages with no actual summary, treat it as an error
-      if (isOutputOnlyDebugMessages(summary)) {
-        throw new Error('Failed to generate a summary. The document may be empty or unreadable.');
-      }
-      
-      // Check for minimum output length to ensure we have a real summary
-      if (summary.length < 50) {
-        console.error('Summary output is too short:', summary);
-        throw new Error('The generated summary is too short or empty. Please try again.');
-      }
-      
-      try {
-        // Clean and format the summary text
-        summary = cleanSummaryText(summary);
-        console.log(`Successfully extracted and formatted summary (${summary.length} chars)`);
-      } catch (cleaningError) {
-        console.error('Error formatting summary:', cleaningError);
-        // Check if we still have some output we can return
-        if (summary.length > 100) {
-          // Use basic formatting instead
-          summary = summary.replace(/\n{3,}/g, '\n\n').trim();
-          console.log('Using basic formatting for summary');
-        } else {
-          throw new Error('Could not format the summary output. Please try again.');
-        }
-      }
-      
-      // If after cleaning there's no content, return an error
-      if (!summary.trim()) {
-        throw new Error('Could not extract a meaningful summary from the document.');
-      }
-      
-      return NextResponse.json({ summary });
-    } catch (execError: any) {
-      console.error('Error executing Python script:', execError);
-      
-      // Detect timeout errors from the child_process module
-      if (execError.code === 'ETIMEDOUT' || execError.killed || execError.signal === 'SIGTERM') {
-        return NextResponse.json({ 
-          error: 'The document summarization process timed out. Please try a smaller document or try again later.' 
-        }, { status: 504 });
-      }
-      
-      // Try to extract meaningful error message from stderr if available
-      let detailedError = execError instanceof Error ? execError.message : 'Failed to process document';
-      
-      if (execError.stderr) {
-        const stderr = execError.stderr.toString();
-        console.error('Python script stderr:', stderr);
-        
-        // Check for specific error patterns in stderr
-        if (stderr.includes('ERROR:')) {
-          const errorMatch = stderr.match(/ERROR:\s*(.+?)(?:\n|$)/);
-          if (errorMatch && errorMatch[1]) {
-            detailedError = errorMatch[1].trim();
-          }
-        }
-        // Check for Google API key errors
-        else if (stderr.includes('GOOGLE_API_KEY') || 
-            stderr.includes('google.api_core.exceptions.InvalidArgument') ||
-            stderr.includes('API key not valid')) {
+        else if (stderr.includes('GOOGLE_API_KEY') || stderr.includes('API key not valid')) {
           detailedError = 'Google API Key is missing or invalid. Please add a valid API key to your .env file.';
         }
-        // Check for rate limiting or quota errors
         else if (stderr.includes('quota') || stderr.includes('rate limit')) {
           detailedError = 'Google API quota or rate limit exceeded. Please try again later.';
         }
-        // Check for timeout indicators
         else if (stderr.includes('timeout') || stderr.toLowerCase().includes('timed out')) {
           detailedError = 'The summarization process timed out. Please try a smaller document or try again later.';
         }
-        // Check for other common errors in the stderr
         else if (stderr.includes('Error:')) {
           const errorLine = stderr.split('Error:')[1]?.split('\n')[0]?.trim();
           if (errorLine) {
             detailedError = errorLine;
           }
         }
+        
+        throw new Error(detailedError);
       }
       
-      throw new Error('Failed to process document: ' + detailedError);
-    }
-  } catch (error: any) {
-    console.error('Document summarizer error:', error);
-    
-    // Create a user-friendly error message
-    let userErrorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    
-    // Sanitize the error message to remove technical details
-    userErrorMessage = userErrorMessage
-      .replace(/Error: Failed to process document: Error: /g, '')
-      .replace(/Error: Failed to process document: /g, '');
-    
-    // Ensure error message doesn't contain technical jargon
-    if (userErrorMessage.includes('pydantic') || 
-        userErrorMessage.includes('JSON schema') || 
-        userErrorMessage.includes('traceback')) {
-      userErrorMessage = 'An error occurred while processing the document. Please try again or contact support.';
-    }
-    
-    return NextResponse.json(
-      { error: userErrorMessage },
-      { status: 500 }
-    );
-  } finally {
-    // Clean up temp files
-    if (tempDir && fs.existsSync(tempDir)) {
+      // Clean and format the summary
+      let cleanedSummary = '';
       try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-        console.log(`Cleaned up temp directory: ${tempDir}`);
-      } catch (cleanupError) {
-        // Silently continue if cleanup fails
-        console.error('Failed to clean up temp directory:', cleanupError);
+        cleanedSummary = cleanSummaryText(stdout);
+        console.log(`Successfully extracted and formatted summary (${cleanedSummary.length} chars)`);
+        
+        // Check if the cleaned summary is too short
+        if (cleanedSummary.length < 50) {
+          console.warn('Summary output is too short:', cleanedSummary);
+          // Try again with less aggressive cleaning
+          cleanedSummary = cleanRawOutput(stdout);
+          if (cleanedSummary.length < 50) {
+            throw new Error('The generated summary is too short or empty. The document might not contain enough text content to summarize.');
+          }
+        }
+        
+      } catch (cleaningError) {
+        console.error('Error formatting summary:', cleaningError);
+        // Check if we still have some output we can return
+        if (stdout.length > 100) {
+          // Use raw output with basic cleanup
+          cleanedSummary = stdout.replace(/\n{3,}/g, '\n\n').trim();
+          console.log('Using minimally processed output for summary');
+        } else {
+          throw new Error('Could not extract a meaningful summary from the document.');
+        }
+      }
+      
+      return NextResponse.json({ summary: cleanedSummary });
+      
+    } catch (error: any) {
+      console.error("Error processing document:", error);
+      
+      // Get error message
+      let errorMessage = error.message || 'Failed to process document';
+      
+      // Check for specific error patterns
+      if (errorMessage.includes('EPERM') || errorMessage.includes('permission')) {
+        errorMessage = 'Permission error: cannot access the document or Python executable.';
+      }
+      
+      if (errorMessage.includes('ENOENT') && errorMessage.includes('python')) {
+        errorMessage = 'Python is not properly installed or accessible from this application.';
+      } else if (errorMessage.includes('ENOENT')) {
+        errorMessage = 'Required file not found. Please check application setup.';
+      }
+      
+      if (errorMessage.includes('timeout')) {
+        errorMessage = 'The process timed out. The document may be too large or complex.';
+      }
+      
+      if (errorMessage.includes('ModuleNotFoundError')) {
+        const moduleMatch = errorMessage.match(/No module named '([^']+)'/);
+        const missingModule = moduleMatch ? moduleMatch[1] : 'unknown module';
+        errorMessage = `Missing Python module: ${missingModule}. Please install it with pip.`;
+      }
+      
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
+    } finally {
+      // Clean up temp directory
+      if (tempDir && fs.existsSync(tempDir)) {
+        try {
+          // Delete temp files
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          console.log(`Cleaned up temp directory: ${tempDir}`);
+        } catch (cleanupError) {
+          console.error("Error cleaning up temp directory:", cleanupError);
+        }
       }
     }
+  } catch (error: any) {
+    console.error("Document summarizer request error:", error);
+    return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 });
   }
-} 
+}

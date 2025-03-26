@@ -11,6 +11,8 @@ interface SidebarState {
   setShowDocumentSummarizer: (show: boolean) => void;
   showYoutubeSummarizer: boolean;
   setShowYoutubeSummarizer: (show: boolean) => void;
+  showWebCrawler: boolean;
+  setShowWebCrawler: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
@@ -22,6 +24,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [showEmailGenerator, setShowEmailGenerator] = useState<boolean>(false);
   const [showDocumentSummarizer, setShowDocumentSummarizer] = useState(false);
   const [showYoutubeSummarizer, setShowYoutubeSummarizer] = useState(false);
+  const [showWebCrawler, setShowWebCrawler] = useState(false);
 
   // Load sidebar states from localStorage on mount
   useEffect(() => {
@@ -46,6 +49,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const storedYoutubeSummarizerValue = localStorage.getItem('showYoutubeSummarizer');
     if (storedYoutubeSummarizerValue !== null) {
       setShowYoutubeSummarizer(storedYoutubeSummarizerValue === 'true');
+    }
+    
+    // Load showWebCrawler state from localStorage
+    const storedWebCrawlerValue = localStorage.getItem('showWebCrawler');
+    if (storedWebCrawlerValue !== null) {
+      setShowWebCrawler(storedWebCrawlerValue === 'true');
     }
   }, []);
 
@@ -72,6 +81,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setShowYoutubeSummarizer(show);
     localStorage.setItem('showYoutubeSummarizer', String(show));
   };
+  
+  // Update the setShowWebCrawler function to persist state
+  const persistentSetShowWebCrawler = (show: boolean) => {
+    setShowWebCrawler(show);
+    localStorage.setItem('showWebCrawler', String(show));
+  };
 
   return (
     <SidebarContext.Provider 
@@ -83,7 +98,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showDocumentSummarizer,
         setShowDocumentSummarizer: persistentSetShowDocumentSummarizer,
         showYoutubeSummarizer,
-        setShowYoutubeSummarizer: persistentSetShowYoutubeSummarizer
+        setShowYoutubeSummarizer: persistentSetShowYoutubeSummarizer,
+        showWebCrawler,
+        setShowWebCrawler: persistentSetShowWebCrawler
       }}
     >
       {children}

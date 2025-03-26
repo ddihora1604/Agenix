@@ -259,7 +259,7 @@ const AgentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get the sidebar state
-  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer } = useSidebarState();
+  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer, setShowWebCrawler } = useSidebarState();
   
   // Update search query after debounce
   useEffect(() => {
@@ -434,6 +434,10 @@ const AgentsPage: React.FC = () => {
       // Set the showYoutubeSummarizer state to true before navigating
       setShowYoutubeSummarizer(true);
       router.push('/agents/youtube-summarizer');
+    } else if (agentId === 'web_scraper') {
+      // Set the showWebCrawler state to true before navigating
+      setShowWebCrawler(true);
+      router.push('/agents/web-crawler');
     } else {
       // For future implementations of other agents
       console.log(`Configure clicked for agent: ${agentId}`);
