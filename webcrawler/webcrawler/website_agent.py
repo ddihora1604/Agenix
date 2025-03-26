@@ -1,65 +1,26 @@
 import os
-from typing import List, Dict
 import argparse
+from typing import List, Dict
 from dotenv import load_dotenv
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
 import google.generativeai as genai
-
-# Try to import FAISS, fall back to simple list store if not available
-try:
-    from langchain_community.vectorstores import FAISS
-    VECTOR_STORE_MODULE = "FAISS"
-except ImportError:
-    print("FAISS not available, using simple list store.")
-    from langchain_community.vectorstores.memory import MemoryVectorStore
-    VECTOR_STORE_MODULE = "InMemory"
-
-# Check for required packages
-def check_required_packages():
-    missing_packages = []
-    
-    try:
-        import langchain
-        import langchain_community
-        import langchain_google_genai
-    except ImportError as e:
-        missing_packages.append(str(e).split("'")[1])
-    
-    try:
-        import google.generativeai
-    except ImportError:
-        missing_packages.append("google-generativeai")
-    
-    try:
-        import bs4
-    except ImportError:
-        missing_packages.append("beautifulsoup4")
-    
-    try:
-        import lxml
-    except ImportError:
-        missing_packages.append("lxml")
-        
-    if missing_packages:
-        print(f"Error: Missing required packages: {', '.join(missing_packages)}")
-        print(f"Please install them using: pip install --user {' '.join(missing_packages)}")
-        return False
-    
-    return True
+import time
+import sys
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
 
 class WebsiteQueryAgent:
-    def __init__(self, api_key: str = None, model_name: str = "models/gemini-2.0-flash"):
+    def __init__(self, api_key: str = None, model_name: str = "models/gemini-1.5-flash"):
         """Initialize the website query agent with Google API key and model"""
         # Use provided API key or get from environment
         self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
-        
         if not self.api_key:
             raise ValueError("Google API key is required. Provide it directly or set in .env file.")
             
@@ -73,8 +34,17 @@ class WebsiteQueryAgent:
     def load_website(self, urls: List[str]) -> None:
         """Load content from a list of URLs using WebBaseLoader"""
         print(f"Loading content from {len(urls)} URLs...")
+        
+        start_time = time.time()
+        
         loader = WebBaseLoader(urls)
         documents = loader.load()
+        
+        # Try to extract title from the first document
+        website_title = "Website Analysis"
+        if documents and hasattr(documents[0], 'metadata') and 'title' in documents[0].metadata:
+            website_title = documents[0].metadata['title']
+            print(f"Title: {website_title}")
         
         # Split documents into chunks with larger chunk size for better context
         text_splitter = RecursiveCharacterTextSplitter(
@@ -84,13 +54,9 @@ class WebsiteQueryAgent:
         chunks = text_splitter.split_documents(documents)
         print(f"Split into {len(chunks)} chunks")
         
-        # Create vector store based on available module
-        if VECTOR_STORE_MODULE == "FAISS":
-            self.vector_store = FAISS.from_documents(chunks, self.embeddings)
-        else:
-            self.vector_store = MemoryVectorStore.from_documents(chunks, self.embeddings)
-            
-        print(f"Vector store created successfully using {VECTOR_STORE_MODULE}")
+        # Create vector store
+        self.vector_store = FAISS.from_documents(chunks, self.embeddings)
+        print("Vector store created successfully")
         
         # Set up Gemini model for QA with improved settings
         llm = ChatGoogleGenerativeAI(
@@ -140,7 +106,11 @@ class WebsiteQueryAgent:
             retriever=self.vector_store.as_retriever(search_kwargs={"k": 5}),  # Increased k for more context
             chain_type_kwargs={"prompt": prompt}
         )
-        print("QA chain setup complete")
+        
+        end_time = time.time()
+        process_time = end_time - start_time
+        print(f"QA chain setup complete")
+        print(f"Total execution time: {process_time:.2f} seconds")
     
     def save_vector_store(self, path: str) -> None:
         """Save the FAISS vector store to disk"""
@@ -228,14 +198,101 @@ class WebsiteQueryAgent:
             enhanced_question = f"Provide the full, detailed example for: {question}"
         
         try:
+            start_time = time.time()
             response = self.qa_chain.invoke({"query": enhanced_question})
+            end_time = time.time()
+            process_time = end_time - start_time
+            print(f"Query processed in {process_time:.2f} seconds")
             return response
         except Exception as e:
             return {"answer": f"Error processing query: {str(e)}"}
 
+def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Website Query Agent Tool")
+    parser.add_argument("--api_key", help="Google API key (optional, can use environment variable)")
+    parser.add_argument("--urls", nargs="+", help="URLs to analyze")
+    parser.add_argument("--save_path", default="vector_store", help="Path to save vector store")
+    parser.add_argument("--load_path", help="Path to load existing vector store")
+    parser.add_argument("--query", help="Question to ask about the website")
+    parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Print timestamp if verbose
+    if args.verbose:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Starting website agent")
+    
+    try:
+        # Initialize agent
+        agent = WebsiteQueryAgent(api_key=args.api_key)
+        
+        # Load existing vector store if specified
+        if args.load_path:
+            agent.load_vector_store(args.load_path)
+        
+        # Load URLs if provided
+        if args.urls:
+            agent.load_website(args.urls)
+            
+            # Save vector store if path specified
+            if args.save_path:
+                agent.save_vector_store(args.save_path)
+        
+        # Process query if provided
+        if args.query:
+            # Check if query is a file reference (starts with @)
+            query = args.query
+            
+            # Handle JSON-formatted strings (for Windows compatibility)
+            if (query.startswith('"') and query.endswith('"')) or (query.startswith("'") and query.endswith("'")):
+                try:
+                    import json
+                    # Try to parse as JSON string
+                    query = json.loads(query)
+                    if args.verbose:
+                        print(f"Parsed JSON-formatted query: {query}")
+                except:
+                    # If not valid JSON, use as-is but strip outer quotes
+                    if len(query) > 1:
+                        query = query[1:-1]
+                    if args.verbose:
+                        print(f"Using query with quotes removed: {query}")
+            
+            # Handle file references
+            if query.startswith('@'):
+                try:
+                    file_path = query[1:]  # Remove the @ symbol
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        query = file.read().strip()
+                    if args.verbose:
+                        print(f"Loaded query from file: {file_path}")
+                except Exception as e:
+                    print(f"Error loading query from file: {str(e)}")
+                    return 1
+            
+            if not agent.qa_chain:
+                print("Error: No website loaded. Please provide URLs or a vector store path.")
+                return
+            
+            result = agent.query(query)
+            print("\nAnswer:")
+            print(result.get("result", "No answer found"))
+        
+        # Run in interactive mode if specified
+        if args.interactive:
+            run_interactive_mode(agent, args.save_path, args.load_path)
+            
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return 1
+    
+    return 0
 
 def run_interactive_mode(agent: WebsiteQueryAgent, save_path: str = "vector_store", load_path: str = None):
-    """Run the agent in interactive mode via terminal - simplified version"""
+    """Run the agent in interactive mode via terminal"""
     print("\n===== Website Query Agent - Interactive Mode =====")
     
     # Load existing vector store if specified
@@ -293,89 +350,10 @@ def run_interactive_mode(agent: WebsiteQueryAgent, save_path: str = "vector_stor
         print("\nProcessing question...")
         try:
             response = agent.query(question)
-            print("\nQuestion:", question)
-            print("\nAnswer:", response.get("result", "No answer found"))
-            
-            # Add an extra prompt for follow-up questions
-            print("\nDo you want more details or have a follow-up question? (Or type 'new'/'exit')")
+            print("\nAnswer:")
+            print(response.get("result", "No answer found"))
         except Exception as e:
-            print(f"Error processing question: {str(e)}")
-
-
-def main():
-    # First check for required packages
-    if not check_required_packages():
-        return 1
-        
-    # Load environment variables
-    load_dotenv()
-    
-    # Use argparse for command line arguments
-    parser = argparse.ArgumentParser(description='Load a website and query its content.')
-    parser.add_argument('url_file', help='File containing the website URL to load')
-    parser.add_argument('--question', help='Question to ask about the website content')
-    parser.add_argument('--save_path', default='vector_store', help='Path to save the vector store')
-    parser.add_argument('--load_path', help='Path to load the vector store from')
-    args = parser.parse_args()
-    
-    # Get API key from environment
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        print("Error: GOOGLE_API_KEY environment variable not set.")
-        print("Please set it in the .env file or as an environment variable.")
-        return 1
-    
-    try:
-        # Read URL from file
-        if os.path.exists(args.url_file):
-            with open(args.url_file, 'r') as f:
-                url = f.read().strip()
-                if not url:
-                    print("Error: URL file is empty.")
-                    return 1
-        else:
-            # Treat as direct URL input if file doesn't exist and it looks like a URL
-            url = args.url_file.strip()
-            if not url.startswith(('http://', 'https://')):
-                print(f"Error: URL file '{args.url_file}' not found and input is not a valid URL.")
-                return 1
-        
-        # Extract website domain for vector store path
-        try:
-            from urllib.parse import urlparse
-            domain = urlparse(url).netloc
-            vector_store_path = os.path.join(args.save_path, domain.replace('.', '_'))
-        except:
-            vector_store_path = args.save_path
-        
-        # Initialize agent
-        agent = WebsiteQueryAgent(api_key=api_key)
-        
-        # Check for load path
-        if args.load_path and os.path.exists(args.load_path):
-            # Load existing vector store
-            agent.load_vector_store(args.load_path)
-        else:
-            # Load website and create new vector store
-            print(f"Analyzing website: {url}")
-            agent.load_website([url])
-            os.makedirs(os.path.dirname(vector_store_path), exist_ok=True)
-            agent.save_vector_store(vector_store_path)
-        
-        # If question is provided, query the website
-        if args.question:
-            response = agent.query(args.question)
-            print(response['result'])
-        else:
-            # Otherwise, run in interactive mode
-            run_interactive_mode(agent, save_path=vector_store_path)
-            
-        return 0
-        
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return 1
+            print(f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    exit_code = main()
-    exit(exit_code)
+    sys.exit(main())

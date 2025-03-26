@@ -96,6 +96,11 @@ module.exports = {
           '0%, 100%': { opacity: 1 },
           '50%': { opacity: 0.5 },
         },
+        pulseWidth: {
+          '0%': { width: '0%' },
+          '50%': { width: '100%' },
+          '100%': { width: '0%' }
+        },
         themeChange: {
           '0%': { filter: 'brightness(1)' },
           '10%': { filter: 'brightness(1.1)' },
@@ -115,6 +120,7 @@ module.exports = {
         'slide-in-left': 'slideInLeft 0.5s ease-in-out',
         'scale': 'scale 0.3s ease-in-out',
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-width': 'pulseWidth 2s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
         'theme-change': 'themeChange 1s ease-out',
         'icon-spin': 'iconSpin 0.5s ease-in-out',
