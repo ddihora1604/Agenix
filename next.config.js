@@ -6,6 +6,11 @@ const nextConfig = {
   // Other Next.js configuration options as needed
   reactStrictMode: true,
   
+  // Configure image domains for next/image
+  images: {
+    domains: ['v3.fal.media'],
+  },
+  
   // Configure webpack to handle node modules
   webpack: (config, { isServer }) => {
     // Fix module resolution for packages that need it

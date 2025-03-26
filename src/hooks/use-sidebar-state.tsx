@@ -13,6 +13,8 @@ interface SidebarState {
   setShowYoutubeSummarizer: (show: boolean) => void;
   showWebCrawler: boolean;
   setShowWebCrawler: (show: boolean) => void;
+  showImageGenerator: boolean;
+  setShowImageGenerator: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
@@ -25,6 +27,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [showDocumentSummarizer, setShowDocumentSummarizer] = useState(false);
   const [showYoutubeSummarizer, setShowYoutubeSummarizer] = useState(false);
   const [showWebCrawler, setShowWebCrawler] = useState(false);
+  const [showImageGenerator, setShowImageGenerator] = useState(false);
 
   // Load sidebar states from localStorage on mount
   useEffect(() => {
@@ -55,6 +58,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const storedWebCrawlerValue = localStorage.getItem('showWebCrawler');
     if (storedWebCrawlerValue !== null) {
       setShowWebCrawler(storedWebCrawlerValue === 'true');
+    }
+    
+    // Load showImageGenerator state from localStorage
+    const storedImageGeneratorValue = localStorage.getItem('showImageGenerator');
+    if (storedImageGeneratorValue !== null) {
+      setShowImageGenerator(storedImageGeneratorValue === 'true');
     }
   }, []);
 
@@ -87,6 +96,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setShowWebCrawler(show);
     localStorage.setItem('showWebCrawler', String(show));
   };
+  
+  // Update the setShowImageGenerator function to persist state
+  const persistentSetShowImageGenerator = (show: boolean) => {
+    setShowImageGenerator(show);
+    localStorage.setItem('showImageGenerator', String(show));
+  };
 
   return (
     <SidebarContext.Provider 
@@ -100,7 +115,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showYoutubeSummarizer,
         setShowYoutubeSummarizer: persistentSetShowYoutubeSummarizer,
         showWebCrawler,
-        setShowWebCrawler: persistentSetShowWebCrawler
+        setShowWebCrawler: persistentSetShowWebCrawler,
+        showImageGenerator,
+        setShowImageGenerator: persistentSetShowImageGenerator
       }}
     >
       {children}

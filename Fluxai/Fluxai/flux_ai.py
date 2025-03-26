@@ -1,20 +1,42 @@
 import fal_client
 import os
 import webbrowser
-from dotenv import load_dotenv
+import sys
+from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Try multiple locations for .env file
+print("Searching for .env file...")
+env_files = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),      # Same directory
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"),  # Parent directory
+    str(Path.home() / "Downloads" / "MercadoVista" / "Fluxai" / "Fluxai" / ".env"),
+    str(Path.home() / "Downloads" / "MercadoVista" / "Fluxai" / ".env"),
+]
 
-# Get API key from environment variables
-fal_api_key = os.getenv("FAL_API_KEY")
-if not fal_api_key:
-    raise ValueError("FAL_API_KEY environment variable not set. Please add it to your .env file.")
+# Try to find .env file
+api_key = None
+for env_file in env_files:
+    print(f"Checking for .env at: {env_file}")
+    if os.path.exists(env_file):
+        print(f"Found .env file at: {env_file}")
+        load_dotenv(env_file)
+        api_key = os.getenv("FAL_API_KEY")
+        if api_key:
+            print("API key loaded successfully")
+            break
+
+# If no API key found, provide instructions
+if not api_key:
+    raise ValueError("""
+FAL_API_KEY environment variable not set.
+Please create a .env file in the Fluxai/Fluxai directory with:
+FAL_API_KEY=your-fal-api-key-here
+You can get a key from https://www.fal.ai/
+""")
 
 # Set the FAL_KEY environment variable for the client to use
-os.environ["FAL_KEY"] = fal_api_key
-
-# Note: No need to set fal_client.api_key directly as it will use the environment variable
+os.environ["FAL_KEY"] = api_key
 
 def on_queue_update(update):
     if isinstance(update, fal_client.InProgress):
