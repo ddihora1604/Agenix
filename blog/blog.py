@@ -12,6 +12,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.markdown import Markdown
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 console = Console()
 

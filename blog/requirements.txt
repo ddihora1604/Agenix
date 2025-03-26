@@ -1,10 +1,12 @@
 langchain
-diffusers
-torch
 langchain_community
-transformers
-accelerate
-torchvision
-pillow
-huggingface_hub
-YoutubeLoader
+langchain_groq
+Console
+Panel
+Markdown
+Progress
+# SpinnerColumn
+# List
+datetime
+rich
+python-dotenv
