@@ -17,6 +17,9 @@ const execPromise = promisify(exec);
 // Use the specific Python executable path where dependencies are installed
 const PYTHON_PATH = 'C:\\Users\\ddihora1604\\AppData\\Local\\Programs\\Python\\Python311\\python.exe';
 
+// Increase process timeout to handle large documents
+const PROCESS_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
 /**
  * Cleans and formats the summary text for better display
  * 
@@ -77,7 +80,7 @@ function cleanSummaryText(text: string): string {
   }
   
   // If we get here, we couldn't find a summary
-  return formatSummaryText(text);
+  throw new Error("Unable to extract a valid summary from the output");
 }
 
 /**
@@ -173,6 +176,8 @@ export async function POST(request: NextRequest) {
   let tempDir = '';
   
   try {
+    console.log("Document summarizer started");
+    
     // Get UUID v4 function when needed
     const uuidv4 = getUuid();
     // Create temp directory for file processing
@@ -194,6 +199,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
     }
     
+    console.log(`Processing file: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    
     // Save file to temp directory
     const filePath = path.join(tempDir, file.name);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
@@ -204,6 +211,7 @@ export async function POST(request: NextRequest) {
     
     // Check if the script exists
     if (!fs.existsSync(scriptPath)) {
+      console.error(`Document summarizer script not found at path: ${scriptPath}`);
       return NextResponse.json({ error: 'Document summarizer script not found' }, { status: 500 });
     }
     
@@ -229,6 +237,9 @@ export async function POST(request: NextRequest) {
     }
     
     const command = `"${PYTHON_PATH}" "${scriptPath}" "${filePath}" ${summaryLengthFlag} ${focusAreasFlag}`;
+    console.log(`Executing command: ${command}`);
+    
+    const startTime = Date.now();
     
     try {
       // Use a different execute approach that properly separates stderr and stdout
@@ -236,7 +247,7 @@ export async function POST(request: NextRequest) {
         // Set maximum buffer size to avoid truncation
         maxBuffer: 1024 * 1024 * 10, // 10MB buffer
         // Add a timeout to prevent hanging processes
-        timeout: 300000, // 5 minutes timeout
+        timeout: PROCESS_TIMEOUT, // 10 minutes timeout
         // Ensure environment variables are passed to child process
         env: { 
           ...process.env, 
@@ -245,6 +256,15 @@ export async function POST(request: NextRequest) {
           PYTHONUNBUFFERED: '1'
         }
       });
+      
+      const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`Document processing completed in ${elapsedTime} seconds`);
+      
+      // Log the full stderr for debugging (keep this for now)
+      if (stderr) {
+        console.log("Python script stderr output:");
+        console.log(stderr);
+      }
       
       // First check stderr for errors, as the Python script writes errors to stderr
       if (stderr && stderr.includes('ERROR:')) {
@@ -267,6 +287,11 @@ export async function POST(request: NextRequest) {
           throw new Error('Google API Key is missing or invalid. Please add a valid API key to your .env file.');
         }
         
+        // Check for timeout errors
+        if (stderr.includes('timeout') || stderr.toLowerCase().includes('timed out')) {
+          throw new Error('The summarization process timed out. Please try a smaller document or try again later.');
+        }
+        
         // Generic error fallback
         throw new Error('An error occurred during PDF processing. Check the Python script output for details.');
       }
@@ -284,8 +309,27 @@ export async function POST(request: NextRequest) {
         throw new Error('Failed to generate a summary. The document may be empty or unreadable.');
       }
       
-      // Clean and format the summary text
-      summary = cleanSummaryText(summary);
+      // Check for minimum output length to ensure we have a real summary
+      if (summary.length < 50) {
+        console.error('Summary output is too short:', summary);
+        throw new Error('The generated summary is too short or empty. Please try again.');
+      }
+      
+      try {
+        // Clean and format the summary text
+        summary = cleanSummaryText(summary);
+        console.log(`Successfully extracted and formatted summary (${summary.length} chars)`);
+      } catch (cleaningError) {
+        console.error('Error formatting summary:', cleaningError);
+        // Check if we still have some output we can return
+        if (summary.length > 100) {
+          // Use basic formatting instead
+          summary = summary.replace(/\n{3,}/g, '\n\n').trim();
+          console.log('Using basic formatting for summary');
+        } else {
+          throw new Error('Could not format the summary output. Please try again.');
+        }
+      }
       
       // If after cleaning there's no content, return an error
       if (!summary.trim()) {
@@ -293,12 +337,22 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({ summary });
-    } catch (execError) {
+    } catch (execError: any) {
+      console.error('Error executing Python script:', execError);
+      
+      // Detect timeout errors from the child_process module
+      if (execError.code === 'ETIMEDOUT' || execError.killed || execError.signal === 'SIGTERM') {
+        return NextResponse.json({ 
+          error: 'The document summarization process timed out. Please try a smaller document or try again later.' 
+        }, { status: 504 });
+      }
+      
       // Try to extract meaningful error message from stderr if available
       let detailedError = execError instanceof Error ? execError.message : 'Failed to process document';
       
-      if (execError instanceof Error && 'stderr' in execError && typeof execError.stderr === 'string') {
-        const stderr = execError.stderr as string;
+      if (execError.stderr) {
+        const stderr = execError.stderr.toString();
+        console.error('Python script stderr:', stderr);
         
         // Check for specific error patterns in stderr
         if (stderr.includes('ERROR:')) {
@@ -313,6 +367,14 @@ export async function POST(request: NextRequest) {
             stderr.includes('API key not valid')) {
           detailedError = 'Google API Key is missing or invalid. Please add a valid API key to your .env file.';
         }
+        // Check for rate limiting or quota errors
+        else if (stderr.includes('quota') || stderr.includes('rate limit')) {
+          detailedError = 'Google API quota or rate limit exceeded. Please try again later.';
+        }
+        // Check for timeout indicators
+        else if (stderr.includes('timeout') || stderr.toLowerCase().includes('timed out')) {
+          detailedError = 'The summarization process timed out. Please try a smaller document or try again later.';
+        }
         // Check for other common errors in the stderr
         else if (stderr.includes('Error:')) {
           const errorLine = stderr.split('Error:')[1]?.split('\n')[0]?.trim();
@@ -324,7 +386,9 @@ export async function POST(request: NextRequest) {
       
       throw new Error('Failed to process document: ' + detailedError);
     }
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Document summarizer error:', error);
+    
     // Create a user-friendly error message
     let userErrorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     
@@ -349,8 +413,10 @@ export async function POST(request: NextRequest) {
     if (tempDir && fs.existsSync(tempDir)) {
       try {
         fs.rmSync(tempDir, { recursive: true, force: true });
+        console.log(`Cleaned up temp directory: ${tempDir}`);
       } catch (cleanupError) {
         // Silently continue if cleanup fails
+        console.error('Failed to clean up temp directory:', cleanupError);
       }
     }
   }

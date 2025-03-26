@@ -48,6 +48,7 @@ const pageTitles: Record<string, string> = {
   '/agents': 'AI Agents',
   '/agents/email-writer': 'Email Generation Agent',
   '/agents/document-summarizer': 'Document Summarizer Agent',
+  '/agents/youtube-summarizer': 'YouTube Summarizer Agent',
   '/workflow': 'Workflow Builder',
   '/settings': 'Settings',
   '/profile': 'User Profile',

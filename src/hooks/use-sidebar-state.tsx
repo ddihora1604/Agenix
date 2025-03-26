@@ -9,6 +9,8 @@ interface SidebarState {
   setShowEmailGenerator: (show: boolean) => void;
   showDocumentSummarizer: boolean;
   setShowDocumentSummarizer: (show: boolean) => void;
+  showYoutubeSummarizer: boolean;
+  setShowYoutubeSummarizer: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
@@ -19,6 +21,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Make showEmailGenerator persistent by storing in localStorage
   const [showEmailGenerator, setShowEmailGenerator] = useState<boolean>(false);
   const [showDocumentSummarizer, setShowDocumentSummarizer] = useState(false);
+  const [showYoutubeSummarizer, setShowYoutubeSummarizer] = useState(false);
 
   // Load sidebar states from localStorage on mount
   useEffect(() => {
@@ -37,6 +40,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const storedDocSummarizerValue = localStorage.getItem('showDocumentSummarizer');
     if (storedDocSummarizerValue !== null) {
       setShowDocumentSummarizer(storedDocSummarizerValue === 'true');
+    }
+    
+    // Load showYoutubeSummarizer state from localStorage
+    const storedYoutubeSummarizerValue = localStorage.getItem('showYoutubeSummarizer');
+    if (storedYoutubeSummarizerValue !== null) {
+      setShowYoutubeSummarizer(storedYoutubeSummarizerValue === 'true');
     }
   }, []);
 
@@ -57,6 +66,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setShowDocumentSummarizer(show);
     localStorage.setItem('showDocumentSummarizer', String(show));
   };
+  
+  // Update the setShowYoutubeSummarizer function to persist state
+  const persistentSetShowYoutubeSummarizer = (show: boolean) => {
+    setShowYoutubeSummarizer(show);
+    localStorage.setItem('showYoutubeSummarizer', String(show));
+  };
 
   return (
     <SidebarContext.Provider 
@@ -66,7 +81,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showEmailGenerator,
         setShowEmailGenerator: persistentSetShowEmailGenerator,
         showDocumentSummarizer,
-        setShowDocumentSummarizer: persistentSetShowDocumentSummarizer
+        setShowDocumentSummarizer: persistentSetShowDocumentSummarizer,
+        showYoutubeSummarizer,
+        setShowYoutubeSummarizer: persistentSetShowYoutubeSummarizer
       }}
     >
       {children}

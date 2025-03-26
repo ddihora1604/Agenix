@@ -4,6 +4,7 @@ import warnings
 import sys
 import uuid
 import time
+import traceback
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
@@ -13,6 +14,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Set timeout values for API calls
+DEFAULT_API_TIMEOUT = 60  # seconds
+MAX_API_TIMEOUT = 120 # seconds
 
 # Function to check dependencies
 def check_dependencies():
@@ -91,6 +96,7 @@ dependencies = check_dependencies()
 
 def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=None):
     """Generate a summary directly from a PDF file using Google GenerativeAI."""
+    start_time = time.time()
     try:
         # Import required packages inside function to handle import errors gracefully
         try:
@@ -120,17 +126,27 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         
         # Load and process the PDF file
         try:
+            print(f"Loading PDF file: {pdf_path}", file=sys.stderr)
             reader = PdfReader(pdf_path)
             text = ""
-            for page in reader.pages:
-                text += page.extract_text() + "\n\n"
+            for i, page in enumerate(reader.pages):
+                if i % 10 == 0 and i > 0:
+                    print(f"Processed {i} pages so far...", file=sys.stderr)
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n\n"
                 
             if not text.strip():
                 return "Error: Could not extract text from the PDF. The document may be scanned or secured."
                 
             print(f"Successfully extracted {len(reader.pages)} pages from PDF. Total chars: {len(text)}", file=sys.stderr)
+            
+            # Log time taken for PDF extraction
+            extraction_time = time.time() - start_time
+            print(f"PDF extraction completed in {extraction_time:.2f} seconds", file=sys.stderr)
         except Exception as pdf_error:
             print(f"ERROR: Failed to process PDF file: {pdf_error}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             return f"Error: Failed to process PDF file - {str(pdf_error)}"
         
         # Define newline character first
@@ -148,7 +164,15 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         if focus_areas and focus_areas.strip():
             focus_instruction = f"Pay special attention to these specific areas: {focus_areas}"
         
-        # Prepare prompt
+        # Prepare prompt with a more structured approach and limit input size
+        max_text_length = 25000  # Reduced from 30000 to process faster
+        
+        # If text is too long, add note about truncation
+        truncation_note = ""
+        if len(text) > max_text_length:
+            truncation_note = f"Note: The document is {len(text)} characters long, but for processing efficiency, only the first {max_text_length} characters are being analyzed."
+            print(f"Document is large ({len(text)} chars). Truncating to {max_text_length} chars for faster processing.", file=sys.stderr)
+        
         prompt = f"""
         You are an expert document analyst and summarizer. The following text is extracted from a PDF document.
         
@@ -164,6 +188,8 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         
         {focus_instruction}
         
+        {truncation_note}
+        
         Focus only on information present in the document. If you don't have enough information in the 
         provided context, do your best with what's available.
         
@@ -171,7 +197,7 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         Format the summary in clear paragraphs with logical organization.
         
         PDF CONTENT:
-        {text[:30000]}  # Limit text to avoid token limits
+        {text[:max_text_length]}
         
         SUMMARY:
         """
@@ -184,7 +210,20 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         while retry_count <= max_retries:
             try:
                 print(f"Initializing Gemini model (attempt {retry_count + 1}/{max_retries + 1})...", file=sys.stderr)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # Use gemini-1.0-pro as a fallback if available
+                model_options = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+                
+                # Try models in order until one works
+                for model_name in model_options:
+                    try:
+                        print(f"Trying model: {model_name}", file=sys.stderr)
+                        model = genai.GenerativeModel(model_name)
+                        print(f"Successfully initialized {model_name}", file=sys.stderr)
+                        break
+                    except Exception as model_init_error:
+                        print(f"Failed to initialize {model_name}: {model_init_error}", file=sys.stderr)
+                        if model_name == model_options[-1]:  # If this was the last model option
+                            raise model_init_error
                 break
             except Exception as model_error:
                 last_error = model_error
@@ -199,19 +238,32 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         
         # Generate response with retry mechanism
         retry_count = 0
+        api_timeout = DEFAULT_API_TIMEOUT
+        
+        print(f"Starting summary generation at {time.time() - start_time:.2f} seconds elapsed", file=sys.stderr)
+        
         while retry_count <= max_retries:
             try:
                 print(f"Generating summary using Gemini (attempt {retry_count + 1}/{max_retries + 1})...", file=sys.stderr)
+                print(f"Using timeout of {api_timeout} seconds", file=sys.stderr)
+                
+                generation_start = time.time()
                 response = model.generate_content(
                     prompt, 
                     generation_config={
-                        "temperature": 0.3,
+                        "temperature": 0.2,  # Reduced from 0.3 for more deterministic output
                         "top_p": 0.95,
                         "max_output_tokens": 2048,
-                        "timeout": 120  # 2 minute timeout
+                        "timeout": api_timeout  # Using dynamic timeout
                     }
                 )
-                print(f"Successfully received response from Gemini API", file=sys.stderr)
+                generation_time = time.time() - generation_start
+                print(f"Successfully received response from Gemini API in {generation_time:.2f} seconds", file=sys.stderr)
+                
+                # Log total time taken
+                total_time = time.time() - start_time
+                print(f"Total processing time: {total_time:.2f} seconds", file=sys.stderr)
+                
                 return response.text
             except Exception as gen_error:
                 last_error = gen_error
@@ -226,6 +278,11 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
                     print(f"ERROR: API quota or rate limit exceeded", file=sys.stderr)
                     return f"Error: API quota or rate limit exceeded - {str(gen_error)}"
                 
+                # If timeout error or network issue, increase timeout for next attempt
+                if "timeout" in str(gen_error).lower() or "network" in str(gen_error).lower():
+                    api_timeout = min(api_timeout * 1.5, MAX_API_TIMEOUT)  # Increase timeout, but not beyond max
+                    print(f"Timeout or network error. Increasing timeout to {api_timeout} seconds for next attempt", file=sys.stderr)
+                
                 if retry_count <= max_retries:
                     wait_time = 2 * retry_count  # Exponential backoff
                     print(f"Retrying in {wait_time} seconds...", file=sys.stderr)
@@ -236,6 +293,7 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
         
     except Exception as e:
         print(f"ERROR: Unexpected error in summary generation: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return f"Error: Unexpected error - {str(e)}"
 
 # Now conditionally import LangChain components based on availability
@@ -248,31 +306,34 @@ if dependencies['has_langchain_genai']:
         from langchain.prompts import ChatPromptTemplate
         from langchain.chains.combine_documents import create_stuff_documents_chain
         from langchain.chains import create_retrieval_chain
-        from langchain_core.documents import Document
         
-        # Try to import vector stores
-        if dependencies['vector_store_available'] == "chroma":
-            from langchain_chroma import Chroma as VectorStore
-            vector_store_type = "chroma"
-        elif dependencies['vector_store_available'] == "faiss":
-            from langchain_community.vectorstores import FAISS as VectorStore
-            vector_store_type = "faiss"
+        # Set a global variable for vector store type based on what's available
+        vector_store_type = dependencies['vector_store_available']
+        if vector_store_type == 'chroma':
+            from langchain_chroma import Chroma
+        elif vector_store_type == 'faiss':
+            from langchain_community.vectorstores import FAISS
         else:
             vector_store_type = None
-    except Exception as e:
-        print(f"Error importing LangChain components: {e}", file=sys.stderr)
+    except Exception as import_error:
+        print(f"WARNING: Failed to import LangChain components: {import_error}", file=sys.stderr)
         dependencies['has_langchain_genai'] = False
-
+        vector_store_type = None
+else:
+    vector_store_type = None
 
 def load_pdf(pdf_path: str) -> List[Dict]:
     """Load PDF document and return list of page contents."""
     try:
         from pypdf import PdfReader
         
+        print(f"Loading PDF file: {pdf_path}", file=sys.stderr)
         reader = PdfReader(pdf_path)
         documents = []
         
         for i, page in enumerate(reader.pages):
+            if i % 10 == 0 and i > 0:
+                print(f"Processed {i} pages so far...", file=sys.stderr)
             text = page.extract_text()
             if text.strip():  # Only add non-empty pages
                 documents.append({
@@ -290,6 +351,7 @@ def load_pdf(pdf_path: str) -> List[Dict]:
         return documents
     except Exception as e:
         print(f"Error loading PDF: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         raise
 
 def split_documents(documents: List[Dict], chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Dict]:
@@ -415,6 +477,8 @@ def print_document_sample(documents, max_chars=200):
 
 def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) -> str:
     """Main function to summarize a PDF document."""
+    start_time = time.time()
+    
     try:
         # Get API key from environment variable
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -433,11 +497,17 @@ def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) ->
             # Load and process the PDF
             documents = load_pdf(pdf_path)
             
+            load_time = time.time() - start_time
+            print(f"PDF loading completed in {load_time:.2f} seconds", file=sys.stderr)
+            
             # Print a sample of the document content
             print_document_sample(documents)
             
             # Split into chunks if document is large
             chunks = split_documents(documents)
+            
+            chunk_time = time.time() - start_time
+            print(f"Document chunking completed in {chunk_time:.2f} seconds", file=sys.stderr)
             
             # Convert to LangChain Document objects if needed
             lc_documents = convert_to_langchain_docs(chunks)
@@ -454,16 +524,36 @@ def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) ->
                 summary = direct_summary_with_genai(pdf_path, summary_length, focus_areas)
                 return summary
             
+            vector_time = time.time() - start_time
+            print(f"Vector store creation completed in {vector_time:.2f} seconds", file=sys.stderr)
+            
             retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
             
             # Set up the LLM
             print("Initializing Gemini model...", file=sys.stderr)
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",  # Using gemini-1.5-flash instead of 2.0 for better compatibility
-                temperature=0.3,
-                top_p=0.95,
-                max_output_tokens=2048
-            )
+            
+            # Try multiple model options in case the primary one fails
+            llm = None
+            model_options = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+            for model_name in model_options:
+                try:
+                    print(f"Trying model: {model_name}", file=sys.stderr)
+                    llm = ChatGoogleGenerativeAI(
+                        model=model_name,
+                        temperature=0.2,  # Reduced from 0.3 for more consistent results
+                        top_p=0.95,
+                        max_output_tokens=2048,
+                        timeout=DEFAULT_API_TIMEOUT
+                    )
+                    print(f"Successfully initialized {model_name}", file=sys.stderr)
+                    break
+                except Exception as model_error:
+                    print(f"Failed to initialize {model_name}: {model_error}", file=sys.stderr)
+            
+            if not llm:
+                print("Failed to initialize any Gemini model. Falling back to direct API.", file=sys.stderr)
+                summary = direct_summary_with_genai(pdf_path, summary_length, focus_areas)
+                return summary
             
             # Create the summary chain with specified parameters
             summary_chain = create_summary_chain(llm, summary_length, focus_areas)
@@ -473,7 +563,16 @@ def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) ->
             
             # Run the chain
             print(f"Generating {summary_length} summary...", file=sys.stderr)
+            
+            chain_start = time.time()
             result = retrieval_chain.invoke({"input": "Summarize this document thoroughly."})
+            chain_time = time.time() - chain_start
+            
+            print(f"Summary generation completed in {chain_time:.2f} seconds", file=sys.stderr)
+            
+            # Total processing time
+            total_time = time.time() - start_time
+            print(f"Total processing time: {total_time:.2f} seconds", file=sys.stderr)
             
             # Return the summary with markers removed
             if str(result["answer"]).startswith("Error:"):
@@ -482,11 +581,13 @@ def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) ->
             return result["answer"]
         except Exception as e:
             print(f"ERROR: {str(e)}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             print("Falling back to direct Google Generative AI...", file=sys.stderr)
             summary = direct_summary_with_genai(pdf_path, summary_length, focus_areas)
             return summary
     except Exception as e:
         print(f"ERROR: Failed to summarize PDF: {str(e)}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return f"Error: Failed to summarize document - {str(e)}"
 
 if __name__ == "__main__":
@@ -512,6 +613,10 @@ if __name__ == "__main__":
             print(f"ERROR: PDF file not found: {args.pdf_path}", file=sys.stderr)
             sys.exit(1)
             
+        # Print start time for performance tracking
+        start_time = time.time()
+        print(f"Starting document summarization at {time.strftime('%H:%M:%S')}...", file=sys.stderr)
+            
         # Attempt to summarize the PDF
         print(f"Processing PDF: {args.pdf_path}", file=sys.stderr)
         print(f"Summary length: {args.summary_length}", file=sys.stderr)
@@ -524,6 +629,10 @@ if __name__ == "__main__":
         if summary.startswith("Error:"):
             print(f"ERROR: {summary[7:]}", file=sys.stderr)
             sys.exit(1)
+        
+        # Print elapsed time for performance tracking
+        elapsed_time = time.time() - start_time
+        print(f"Document summarization completed in {elapsed_time:.2f} seconds", file=sys.stderr)
         
         # Flush stderr to ensure all debug messages are separated from stdout
         sys.stderr.flush()
@@ -542,4 +651,5 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print(f"ERROR: Failed to summarize document: {str(e)}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
