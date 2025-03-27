@@ -259,7 +259,7 @@ const AgentsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get the sidebar state
-  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer, setShowWebCrawler, setShowImageGenerator } = useSidebarState();
+  const { setShowEmailGenerator, setShowDocumentSummarizer, setShowYoutubeSummarizer, setShowWebCrawler, setShowImageGenerator, setShowBlogWriter } = useSidebarState();
   
   // Update search query after debounce
   useEffect(() => {
@@ -443,6 +443,10 @@ const AgentsPage: React.FC = () => {
       // Set the showImageGenerator state to true before navigating
       setShowImageGenerator(true);
       router.push('/agents/image-generator');
+    } else if (agentId === 'blog_writer') {
+      // Set the showBlogWriter state to true before navigating
+      setShowBlogWriter(true);
+      router.push('/agents/blog-writer');
     } else {
       // For future implementations of other agents
       console.log(`Configure clicked for agent: ${agentId}`);

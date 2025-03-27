@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import dynamic from 'next/dynamic';
 import { geminiService } from '../lib/gemini-service';
 import '../styles/blender-bg.css';
+import ReactMarkdown from 'react-markdown';
 
 // Dynamically import the 3D model component with no SSR to avoid hydration issues
 const AIChatbotModel = dynamic(() => import('./AIChatbotModel'), {
@@ -21,6 +22,37 @@ interface Message {
   content: string;
   timestamp: Date;
 }
+
+const MarkdownRenderer = ({ children }: { children: string }) => (
+  <div className="text-sm prose prose-invert max-w-none">
+    <ReactMarkdown
+      components={{
+        p: ({ node, ...props }) => <p className="mb-2" {...props} />,
+        ul: ({ node, ...props }) => <ul className="mb-2 space-y-1" {...props} />,
+        ol: ({ node, ...props }) => <ol className="mb-2 space-y-1 list-decimal pl-4" {...props} />,
+        li: ({ node, ...props }) => <li className="ml-4" {...props} />,
+        hr: () => <hr className="my-2 border-white/20" />,
+        strong: ({ node, ...props }) => <strong className="text-blue-200" {...props} />,
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  </div>
+);
+
+// Update the message rendering part in your existing Chatbot component
+const MessageContent = ({ msg }: { msg: Message }) => (
+  <div className="max-w-[80%] rounded-lg p-3">
+    {msg.type === 'bot' ? (
+      <MarkdownRenderer>{msg.content}</MarkdownRenderer>
+    ) : (
+      <p className="text-sm">{msg.content}</p>
+    )}
+    <span className="text-xs opacity-70 mt-1 block">
+      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    </span>
+  </div>
+);
 
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -156,19 +188,7 @@ const Chatbot: React.FC = () => {
                   msg.type === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-lg p-3",
-                    msg.type === 'user'
-                      ? 'bg-blue-600/80 text-white backdrop-blur-sm rounded-br-none'
-                      : 'bg-white/10 backdrop-blur-md text-white rounded-bl-none'
-                  )}
-                >
-                  <p className="text-sm">{msg.content}</p>
-                  <span className="text-xs opacity-70 mt-1 block">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
+                <MessageContent msg={msg} />
               </div>
             ))}
             {isTyping && (

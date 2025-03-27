@@ -1,5 +1,0 @@
-langchain
-diffusers
-torch
-langchain_community
-transformers
