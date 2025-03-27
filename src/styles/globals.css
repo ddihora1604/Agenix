@@ -170,6 +170,19 @@
   .shadow-xl {
     box-shadow: var(--shadow-xl);
   }
+  
+  /* Custom scrollbar utilities */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-primary {
+    scrollbar-color: hsl(var(--primary)) transparent;
+  }
+  
+  .scrollbar-track-transparent {
+    scrollbar-track-color: transparent;
+  }
 }
 
 @layer components {
@@ -322,22 +335,43 @@
   transition: none !important;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styles */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted rounded-full;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/50 rounded-full;
+  background: hsl(var(--primary));
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground;
+  background: hsl(var(--primary-hover));
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) transparent;
+}
+
+/* Custom scrollbar for chatbot */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.8);
+  border-radius: 4px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
 }
 
 /* Custom animation classes */

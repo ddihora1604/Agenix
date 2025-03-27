@@ -54,23 +54,23 @@ function RobotModel({ isAnimating }: { isAnimating: boolean }) {
       {/* Body */}
       <mesh position={[0, -0.5, 0]}>
         <boxGeometry args={[1.2, 1.5, 0.8]} />
-        <meshStandardMaterial color="#2563eb" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color="#3b82f6" metalness={0.8} roughness={0.2} />
       </mesh>
       
       {/* Head */}
       <mesh position={[0, 0.6, 0]}>
         <boxGeometry args={[0.8, 0.8, 0.8]} />
-        <meshStandardMaterial color="#2563eb" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color="#4f46e5" metalness={0.8} roughness={0.2} />
       </mesh>
       
       {/* Eyes */}
       <mesh position={[0.2, 0.7, 0.41]}>
         <sphereGeometry args={[0.1, 16, 16]} />
-        <meshStandardMaterial color="#ffffff" emissive="#60a5fa" emissiveIntensity={1} />
+        <meshStandardMaterial color="#ffffff" emissive="#93c5fd" emissiveIntensity={1} />
       </mesh>
       <mesh position={[-0.2, 0.7, 0.41]}>
         <sphereGeometry args={[0.1, 16, 16]} />
-        <meshStandardMaterial color="#ffffff" emissive="#60a5fa" emissiveIntensity={1} />
+        <meshStandardMaterial color="#ffffff" emissive="#93c5fd" emissiveIntensity={1} />
       </mesh>
       
       {/* Antenna */}
@@ -80,8 +80,28 @@ function RobotModel({ isAnimating }: { isAnimating: boolean }) {
       </mesh>
       <mesh position={[0, 1.3, 0]}>
         <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.5} />
+        <meshStandardMaterial color="#ec4899" emissive="#ec4899" emissiveIntensity={0.8} />
       </mesh>
+      
+      {/* "M" Logo on chest */}
+      <group position={[0, -0.3, 0.41]}>
+        <mesh position={[-0.2, 0, 0]}>
+          <boxGeometry args={[0.1, 0.4, 0.05]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0.2, 0, 0]}>
+          <boxGeometry args={[0.1, 0.4, 0.05]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 4]}>
+          <boxGeometry args={[0.1, 0.3, 0.05]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0, 0, 0]} rotation={[0, 0, -Math.PI / 4]}>
+          <boxGeometry args={[0.1, 0.3, 0.05]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+      </group>
       
       {/* Arms */}
       <mesh position={[0.7, -0.3, 0]} rotation={[0, 0, Math.PI / 2]}>
@@ -139,8 +159,23 @@ const AIChatbotModel: React.FC<AIChatbotModelProps> = ({ isAnimating = false }) 
           )}
         </Float>
         
-        {/* Add subtle sparkles for a magical effect */}
-        <Sparkles count={50} scale={5} size={1} speed={0.5} opacity={0.5} />
+        {/* Add sparkles with colors matching the theme */}
+        <Sparkles 
+          count={50} 
+          scale={5} 
+          size={1} 
+          speed={0.5} 
+          opacity={0.5} 
+          color="#ec4899" 
+        />
+        <Sparkles 
+          count={30} 
+          scale={3} 
+          size={0.7} 
+          speed={0.3} 
+          opacity={0.3} 
+          color="#3b82f6" 
+        />
         
         <OrbitControls 
           enableZoom={false} 
