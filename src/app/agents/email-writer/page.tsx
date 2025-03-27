@@ -1,33 +1,65 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft, Send, Loader2, AlertTriangle, CheckCircle2, Terminal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
+import { useEmailWriterStore } from '@/store/page-states';
 
 const EmailWriterPage: React.FC = () => {
   const router = useRouter();
-  const [emailPrompt, setEmailPrompt] = useState('');
-  const [generatedEmail, setGeneratedEmail] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [pythonError, setPythonError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const { setShowEmailGenerator } = useSidebarState();
-  const [isCopied, setIsCopied] = useState(false);
+  
+  // Use the Zustand store instead of React useState
+  const {
+    emailPrompt, 
+    generatedEmail, 
+    isGenerating, 
+    error, 
+    apiKeyMissing, 
+    successMessage, 
+    pythonError, 
+    retryCount, 
+    isCopied
+  } = useEmailWriterStore();
+  
+  // Destructure the setter functions from the store
+  const setEmailPrompt = useEmailWriterStore((state) => 
+    (value: string) => useEmailWriterStore.setState({ emailPrompt: value }));
+  const setGeneratedEmail = useEmailWriterStore((state) => 
+    (value: string) => useEmailWriterStore.setState({ generatedEmail: value }));
+  const setIsGenerating = useEmailWriterStore((state) => 
+    (value: boolean) => useEmailWriterStore.setState({ isGenerating: value }));
+  const setError = useEmailWriterStore((state) => 
+    (value: string | null) => useEmailWriterStore.setState({ error: value }));
+  const setApiKeyMissing = useEmailWriterStore((state) => 
+    (value: boolean) => useEmailWriterStore.setState({ apiKeyMissing: value }));
+  const setSuccessMessage = useEmailWriterStore((state) => 
+    (value: string | null) => useEmailWriterStore.setState({ successMessage: value }));
+  const setPythonError = useEmailWriterStore((state) => 
+    (value: boolean) => useEmailWriterStore.setState({ pythonError: value }));
+  const setRetryCount = useEmailWriterStore((state) => 
+    (value: number) => useEmailWriterStore.setState({ retryCount: value }));
+  const setIsCopied = useEmailWriterStore((state) => 
+    (value: boolean) => useEmailWriterStore.setState({ isCopied: value }));
+  
+  // Helper function to update multiple states at once
+  const updateMultipleStates = (updates: Partial<typeof useEmailWriterStore.getState()>) => {
+    useEmailWriterStore.setState(updates);
+  };
 
   useEffect(() => {
     // Clear error and success messages when the email prompt changes
     if (error || successMessage) {
-      setError(null);
-      setSuccessMessage(null);
-      setApiKeyMissing(false);
-      setPythonError(false);
+      updateMultipleStates({
+        error: null,
+        successMessage: null,
+        apiKeyMissing: false,
+        pythonError: false
+      });
     }
-  }, [emailPrompt]);
+  }, [emailPrompt, error, successMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +69,13 @@ const EmailWriterPage: React.FC = () => {
       return;
     }
     
-    setError(null);
-    setApiKeyMissing(false);
-    setPythonError(false);
-    setSuccessMessage(null);
-    setIsGenerating(true);
+    updateMultipleStates({
+      error: null,
+      apiKeyMissing: false,
+      pythonError: false,
+      successMessage: null,
+      isGenerating: true
+    });
     
     try {
       const response = await fetch('/api/email-generator', {
@@ -89,10 +123,11 @@ const EmailWriterPage: React.FC = () => {
       }
       
       // If we reach here, email was generated successfully
-      setGeneratedEmail(data.emailContent);
-      setSuccessMessage('Email generated successfully!');
-      // Reset retry count on success
-      setRetryCount(0);
+      updateMultipleStates({
+        generatedEmail: data.emailContent,
+        successMessage: 'Email generated successfully!',
+        retryCount: 0
+      });
     } catch (err) {
       const errorMessage = (err as Error).message || 'An error occurred while generating the email.';
       if (!apiKeyMissing && !pythonError) {
@@ -101,7 +136,7 @@ const EmailWriterPage: React.FC = () => {
       
       // Only increment retry count for non-setup issues
       if (!apiKeyMissing && !pythonError) {
-        setRetryCount(prev => prev + 1);
+        setRetryCount(retryCount + 1);
       }
     } finally {
       setIsGenerating(false);
@@ -110,10 +145,12 @@ const EmailWriterPage: React.FC = () => {
 
   // Function to reset the form and try again
   const handleReset = () => {
-    setError(null);
-    setApiKeyMissing(false);
-    setPythonError(false);
-    setRetryCount(0);
+    updateMultipleStates({
+      error: null,
+      apiKeyMissing: false,
+      pythonError: false,
+      retryCount: 0
+    });
   };
 
   // Handle going back to the agents page
@@ -202,40 +239,10 @@ const EmailWriterPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4"
         >
-          <p className="flex items-center text-green-700 dark:text-green-400">
-            <CheckCircle2 className="h-5 w-5 mr-2 flex-shrink-0" />
+          <p className="flex items-center text-green-700 dark:text-green-300 text-sm">
+            <CheckCircle2 className="h-5 w-5 mr-2 text-green-500 dark:text-green-400" />
             {successMessage}
           </p>
-        </motion.div>
-      )}
-      
-      {(error && !apiKeyMissing && !pythonError && retryCount > 2) && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
-        >
-          <h3 className="flex items-center text-red-800 dark:text-red-400 font-medium mb-2">
-            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
-            Persistent Error
-          </h3>
-          <p className="text-red-700 dark:text-red-300 text-sm mb-2">
-            We're encountering a persistent issue. Please try the following:
-          </p>
-          <ol className="text-red-700 dark:text-red-300 text-sm list-decimal ml-5 space-y-1">
-            <li>Restart your computer to clear any locked processes</li>
-            <li>Verify your Google API key is valid</li>
-            <li>Make sure Python 3.8+ is installed and in your PATH</li>
-            <li>Check your internet connection</li>
-            <li>
-              <button
-                onClick={handleReset}
-                className="mt-2 px-3 py-1 bg-red-100 dark:bg-red-800/50 text-red-800 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-              >
-                Reset and Try Again
-              </button>
-            </li>
-          </ol>
         </motion.div>
       )}
       
@@ -336,28 +343,34 @@ const EmailWriterPage: React.FC = () => {
                   }
                   
                   // Format signature
-                  if (line.includes('Sincerely,') || 
-                      line.includes('Best regards,') || 
-                      line.includes('Regards,') ||
-                      line.includes('Thank you,') ||
-                      line.includes('Yours truly,')) {
+                  if (line.startsWith('Sincerely') || 
+                      line.startsWith('Best regards') || 
+                      line.startsWith('Regards') || 
+                      line.startsWith('Thank you') || 
+                      line.startsWith('Best') || 
+                      line.startsWith('Yours')) {
                     return (
-                      <p key={index} className="mt-4 font-medium">
+                      <p key={index} className="font-medium my-2">
                         {line}
                       </p>
                     );
                   }
                   
-                  // For empty lines (paragraph breaks)
+                  // Empty line
                   if (line.trim() === '') {
                     return <br key={index} />;
                   }
                   
-                  // Regular lines
-                  return <p key={index} className="my-2">{line}</p>;
+                  // Default paragraph
+                  return (
+                    <p key={index} className="my-1">
+                      {line}
+                    </p>
+                  );
                 })}
               </div>
             </div>
+            
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => {
