@@ -6,7 +6,8 @@ import { cn } from '../lib/utils';
 import dynamic from 'next/dynamic';
 import { geminiService } from '../lib/gemini-service';
 import '../styles/blender-bg.css';
-import ReactMarkdown from 'react-markdown';
+import '../styles/chatbot.css';
+import { MessageContent } from './MessageContent';
 
 // Dynamically import the 3D model component with no SSR to avoid hydration issues
 const AIChatbotModel = dynamic(() => import('./AIChatbotModel'), {
@@ -22,37 +23,6 @@ interface Message {
   content: string;
   timestamp: Date;
 }
-
-const MarkdownRenderer = ({ children }: { children: string }) => (
-  <div className="text-sm prose prose-invert max-w-none">
-    <ReactMarkdown
-      components={{
-        p: ({ node, ...props }) => <p className="mb-2" {...props} />,
-        ul: ({ node, ...props }) => <ul className="mb-2 space-y-1" {...props} />,
-        ol: ({ node, ...props }) => <ol className="mb-2 space-y-1 list-decimal pl-4" {...props} />,
-        li: ({ node, ...props }) => <li className="ml-4" {...props} />,
-        hr: () => <hr className="my-2 border-white/20" />,
-        strong: ({ node, ...props }) => <strong className="text-blue-200" {...props} />,
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  </div>
-);
-
-// Update the message rendering part in your existing Chatbot component
-const MessageContent = ({ msg }: { msg: Message }) => (
-  <div className="max-w-[80%] rounded-lg p-3">
-    {msg.type === 'bot' ? (
-      <MarkdownRenderer>{msg.content}</MarkdownRenderer>
-    ) : (
-      <p className="text-sm">{msg.content}</p>
-    )}
-    <span className="text-xs opacity-70 mt-1 block">
-      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-    </span>
-  </div>
-);
 
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +53,7 @@ const Chatbot: React.FC = () => {
       const welcomeMessage: Message = {
         id: 'welcome',
         type: 'bot',
-        content: "Hello! I'm your AI assistant for this marketplace. I can help you explore AI agents, navigate the platform, or answer any questions you might have. How can I assist you today?",
+        content: "Hello! I'm MercadoAI, your assistant for this marketplace. I can help you explore AI agents, navigate the platform, or answer any questions you might have. How can I assist you today?",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
@@ -139,10 +109,11 @@ const Chatbot: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all duration-300",
+          "w-16 h-16 rounded-full mercado-chatbot-button flex items-center justify-center shadow-lg transition-all duration-300",
           isOpen && "scale-0 opacity-0",
           "hover:scale-110"
         )}
+        aria-label="Open chat with MercadoAI"
       >
         <div className="w-full h-full absolute">
           <Suspense fallback={<MessageSquare className="w-6 h-6" />}>
@@ -158,28 +129,29 @@ const Chatbot: React.FC = () => {
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0"
         )}
       >
-        {/* Blender style background wrapper */}
-        <div className="blender-bg blender-grid w-full h-full">
+        {/* White background wrapper */}
+        <div className="w-full h-full mercado-chatbot-container">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-blue-900/30 backdrop-blur-sm bg-blue-900/20">
+          <div className="flex items-center justify-between p-4 mercado-chatbot-header">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 relative">
-                <Suspense fallback={<Bot className="w-6 h-6 text-blue-200" />}>
+                <Suspense fallback={<Bot className="w-6 h-6 text-blue-400" />}>
                   <AIChatbotModel isAnimating={isModelAnimating} />
                 </Suspense>
               </div>
-              <h3 className="font-semibold text-white">AI Assistant</h3>
+              <h3 className="font-semibold text-white">MercadoAI</h3>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-blue-200 hover:text-white transition-colors"
+              className="text-blue-100 hover:text-white transition-colors"
+              aria-label="Close chat"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="h-96 overflow-y-auto p-4 space-y-4 backdrop-blur-sm">
+          <div className="h-96 overflow-y-auto p-4 space-y-4 mercado-chatbot-messages">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -188,24 +160,24 @@ const Chatbot: React.FC = () => {
                   msg.type === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
-                <MessageContent msg={msg} />
+                <MessageContent msg={msg} customClass={msg.type === 'user' ? 'mercado-chatbot-user-message' : 'mercado-chatbot-bot-message'} />
               </div>
             ))}
             {isTyping && (
-              <div className="flex items-center space-x-2 text-blue-200">
+              <div className="flex items-center space-x-2 mercado-chatbot-typing">
                 <div className="w-6 h-6 relative">
                   <Suspense fallback={<Loader2 className="w-4 h-4 animate-spin" />}>
                     <AIChatbotModel isAnimating={true} />
                   </Suspense>
                 </div>
-                <span className="text-sm">AI is thinking...</span>
+                <span className="text-sm">MercadoAI is thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="border-t border-blue-900/30 p-4 backdrop-blur-md bg-blue-900/20">
+          <form onSubmit={handleSubmit} className="border-t border-slate-200 p-4">
             <div className="flex space-x-2">
               <input
                 ref={inputRef}
@@ -213,14 +185,16 @@ const Chatbot: React.FC = () => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type your message..."
-                className="flex-1 px-4 py-2 bg-white/10 backdrop-blur-md border border-blue-900/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-blue-200/70"
+                className="flex-1 px-4 py-2 mercado-chatbot-input rounded-lg focus:outline-none"
+                aria-label="Type your message to MercadoAI"
               />
               <button
                 type="submit"
                 disabled={isTyping}
+                aria-label="Send message"
                 className={cn(
-                  "px-4 py-2 bg-blue-600/80 text-white rounded-lg transition-colors backdrop-blur-sm",
-                  isTyping ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700/80"
+                  "px-4 py-2 mercado-chatbot-send-button text-white rounded-lg",
+                  isTyping ? "opacity-70 cursor-not-allowed" : ""
                 )}
               >
                 <Send className="w-5 h-5" />

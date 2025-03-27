@@ -1,0 +1,92 @@
+/* Custom styles for the MercadoAI chatbot */
+
+.mercado-chatbot-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(236, 72, 153, 0.3);
+  transition: all 0.3s ease;
+}
+
+.mercado-chatbot-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #db2777 100%);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.7), 0 0 40px rgba(236, 72, 153, 0.5);
+  transform: scale(1.05);
+}
+
+.mercado-chatbot-header {
+  background: linear-gradient(90deg, rgba(30, 58, 138, 1) 0%, rgba(147, 51, 234, 0.9) 50%, rgba(219, 39, 119, 1) 100%);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.mercado-chatbot-container {
+  background: white;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 6px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.mercado-chatbot-messages {
+  background: white;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.5) transparent;
+}
+
+.mercado-chatbot-messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mercado-chatbot-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mercado-chatbot-messages::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #3b82f6, #ec4899);
+  border-radius: 4px;
+}
+
+.mercado-chatbot-input {
+  background: rgba(241, 245, 249, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.mercado-chatbot-input:focus {
+  background: white;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.mercado-chatbot-input::placeholder {
+  color: #64748b;
+}
+
+.mercado-chatbot-send-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
+  transition: all 0.2s ease;
+}
+
+.mercado-chatbot-send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #db2777 100%);
+}
+
+.mercado-chatbot-typing {
+  color: #3b82f6;
+}
+
+/* User message bubble */
+.mercado-chatbot-user-message {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  color: white;
+  border-radius: 1rem 1rem 0 1rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Bot message bubble */
+.mercado-chatbot-bot-message {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-radius: 1rem 1rem 1rem 0;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+} 
