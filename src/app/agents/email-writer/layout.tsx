@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Email Generation Agent - MercadoVista',
+  title: 'Email Generation Agent - Agenix',
   description: 'Generate professional business emails with AI assistance',
 };
 

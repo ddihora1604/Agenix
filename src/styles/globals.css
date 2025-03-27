@@ -5,6 +5,14 @@
 /* Import theme transition styles */
 @import './theme-transition.css';
 
+/* Font fallback system for improved reliability */
+:root {
+  --font-fallback-sans: Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-fallback-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-source-serif: var(--font-source-serif);
+  --font-lora: var(--font-lora);
+}
+
 @layer base {
   :root {
     /* Main colors */
@@ -104,6 +112,16 @@
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
   }
+
+  /* Apply Lora to all headings by default */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-lora), var(--font-source-serif), ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  }
+  
+  /* Apply Source Serif 4 to body text */
+  body {
+    font-family: var(--font-source-serif), ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  }
 }
 
 @layer base {
@@ -118,11 +136,11 @@
   
   body {
     @apply bg-background text-foreground;
-    @apply transition-colors duration-300 ease-in-out;
+    @apply font-serif transition-colors duration-300 ease-in-out;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight text-foreground;
+    @apply font-serif font-semibold tracking-tight text-foreground;
   }
   
   h1 {
@@ -142,7 +160,7 @@
   }
   
   p {
-    @apply leading-7;
+    @apply font-serif leading-7;
   }
   
   a {
@@ -450,4 +468,13 @@ body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Utility classes for explicit font usage */
+.font-heading {
+  font-family: var(--font-lora), var(--font-source-serif), ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+
+.font-body {
+  font-family: var(--font-source-serif), ui-serif, Georgia, Cambria, "Times New Roman", serif;
 }

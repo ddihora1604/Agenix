@@ -137,7 +137,7 @@ export default function Home() {
               variants={fadeInUp}
               className="font-manrope text-6xl md:text-7xl lg:text-8xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-pink-500 to-indigo-600 dark:from-blue-400 dark:via-pink-400 dark:to-indigo-400 mb-8 md:mb-10 leading-tight"
             >
-              MercadoVista
+              Agenix
             </motion.h1>
             
             <motion.p 

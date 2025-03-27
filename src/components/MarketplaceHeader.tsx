@@ -10,7 +10,7 @@ const MarketplaceHeader: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <Cpu className="h-8 w-8 text-indigo-600" />
-            <h1 className="text-2xl font-bold text-gray-900">MercadoVista: AI Agent Marketplace</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Agenix: AI Agent Marketplace</h1>
           </div>
           
           <div className="w-full md:w-96">

@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Document Summarizer | MercadoVista',
+  title: 'Document Summarizer | Agenix',
   description: 'Analyze and summarize documents, extracting key insights and information',
 };
 

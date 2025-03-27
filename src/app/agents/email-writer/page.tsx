@@ -5,13 +5,13 @@ import { ArrowLeft, Send, Loader2, AlertTriangle, CheckCircle2, Terminal } from 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
-import { useEmailWriterStore } from '@/store/page-states';
+import { useEmailWriterStore } from '@/store/email-writer-store';
 
 const EmailWriterPage: React.FC = () => {
   const router = useRouter();
   const { setShowEmailGenerator } = useSidebarState();
   
-  // Use the Zustand store instead of React useState
+  // Use the Zustand store
   const {
     emailPrompt, 
     generatedEmail, 
@@ -24,28 +24,45 @@ const EmailWriterPage: React.FC = () => {
     isCopied
   } = useEmailWriterStore();
   
-  // Destructure the setter functions from the store
-  const setEmailPrompt = useEmailWriterStore((state) => 
-    (value: string) => useEmailWriterStore.setState({ emailPrompt: value }));
-  const setGeneratedEmail = useEmailWriterStore((state) => 
-    (value: string) => useEmailWriterStore.setState({ generatedEmail: value }));
-  const setIsGenerating = useEmailWriterStore((state) => 
-    (value: boolean) => useEmailWriterStore.setState({ isGenerating: value }));
-  const setError = useEmailWriterStore((state) => 
-    (value: string | null) => useEmailWriterStore.setState({ error: value }));
-  const setApiKeyMissing = useEmailWriterStore((state) => 
-    (value: boolean) => useEmailWriterStore.setState({ apiKeyMissing: value }));
-  const setSuccessMessage = useEmailWriterStore((state) => 
-    (value: string | null) => useEmailWriterStore.setState({ successMessage: value }));
-  const setPythonError = useEmailWriterStore((state) => 
-    (value: boolean) => useEmailWriterStore.setState({ pythonError: value }));
-  const setRetryCount = useEmailWriterStore((state) => 
-    (value: number) => useEmailWriterStore.setState({ retryCount: value }));
-  const setIsCopied = useEmailWriterStore((state) => 
-    (value: boolean) => useEmailWriterStore.setState({ isCopied: value }));
+  // Define setter functions
+  const setEmailPrompt = (value: string) => {
+    useEmailWriterStore.setState({ emailPrompt: value });
+  };
+  
+  const setGeneratedEmail = (value: string) => {
+    useEmailWriterStore.setState({ generatedEmail: value });
+  };
+  
+  const setIsGenerating = (value: boolean) => {
+    useEmailWriterStore.setState({ isGenerating: value });
+  };
+  
+  const setError = (value: string | null) => {
+    useEmailWriterStore.setState({ error: value });
+  };
+  
+  const setApiKeyMissing = (value: boolean) => {
+    useEmailWriterStore.setState({ apiKeyMissing: value });
+  };
+  
+  const setSuccessMessage = (value: string | null) => {
+    useEmailWriterStore.setState({ successMessage: value });
+  };
+  
+  const setPythonError = (value: boolean) => {
+    useEmailWriterStore.setState({ pythonError: value });
+  };
+  
+  const setRetryCount = (value: number) => {
+    useEmailWriterStore.setState({ retryCount: value });
+  };
+  
+  const setIsCopied = (value: boolean) => {
+    useEmailWriterStore.setState({ isCopied: value });
+  };
   
   // Helper function to update multiple states at once
-  const updateMultipleStates = (updates: Partial<typeof useEmailWriterStore.getState()>) => {
+  const updateMultipleStates = (updates: Partial<any>) => {
     useEmailWriterStore.setState(updates);
   };
 
@@ -155,8 +172,6 @@ const EmailWriterPage: React.FC = () => {
 
   // Handle going back to the agents page
   const handleBackClick = () => {
-    // We no longer need to set showEmailGenerator to false
-    // since we want it to persist across navigation
     router.push('/agents');
   };
 
