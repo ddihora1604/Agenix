@@ -96,3 +96,16 @@ The smart crawling feature:
 2. Uses Gemini to evaluate which links are most relevant to your query
 3. Only follows the links that are likely to contain information related to your query
 4. Creates a focused dataset of pages for more accurate answers
+
+## Security Considerations
+
+When loading a saved vector store, the system uses the `allow_dangerous_deserialization=True` parameter with FAISS. This is required by newer versions of LangChain as a security measure, as pickle files can potentially contain malicious code. Only use this with vector stores that you created yourself or from trusted sources.
+
+```python
+# Example of loading a vector store safely
+vector_store = FAISS.load_local(
+    "path/to/vector_store", 
+    embeddings, 
+    allow_dangerous_deserialization=True
+)
+```

@@ -123,7 +123,9 @@ class WebsiteQueryAgent:
     def load_vector_store(self, path: str) -> None:
         """Load a FAISS vector store from disk"""
         if os.path.exists(path):
-            self.vector_store = FAISS.load_local(path, self.embeddings)
+            # allow_dangerous_deserialization=True is required for newer versions of LangChain
+            # to explicitly acknowledge we trust this pickle file source
+            self.vector_store = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             
             # Set up Gemini model for QA with improved settings
             llm = ChatGoogleGenerativeAI(
