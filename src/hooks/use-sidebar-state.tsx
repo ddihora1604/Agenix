@@ -17,105 +17,55 @@ interface SidebarState {
   setShowImageGenerator: (show: boolean) => void;
   showBlogWriter: boolean;
   setShowBlogWriter: (show: boolean) => void;
+  showJobAgent: boolean;
+  setShowJobAgent: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
 
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check local storage for persisted sidebar state (collapsed)
+  // Set default states directly without checking localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  // Make showEmailGenerator persistent by storing in localStorage
   const [showEmailGenerator, setShowEmailGenerator] = useState<boolean>(false);
   const [showDocumentSummarizer, setShowDocumentSummarizer] = useState(false);
   const [showYoutubeSummarizer, setShowYoutubeSummarizer] = useState(false);
   const [showWebCrawler, setShowWebCrawler] = useState(false);
   const [showImageGenerator, setShowImageGenerator] = useState(false);
   const [showBlogWriter, setShowBlogWriter] = useState(false);
-
-  // Load sidebar states from localStorage on mount
-  useEffect(() => {
-    const storedCollapsedValue = localStorage.getItem('sidebarCollapsed');
-    if (storedCollapsedValue !== null) {
-      setSidebarCollapsed(storedCollapsedValue === 'true');
-    }
-    
-    // Load showEmailGenerator state from localStorage
-    const storedEmailGenValue = localStorage.getItem('showEmailGenerator');
-    if (storedEmailGenValue !== null) {
-      setShowEmailGenerator(storedEmailGenValue === 'true');
-    }
-    
-    // Load showDocumentSummarizer state from localStorage
-    const storedDocSummarizerValue = localStorage.getItem('showDocumentSummarizer');
-    if (storedDocSummarizerValue !== null) {
-      setShowDocumentSummarizer(storedDocSummarizerValue === 'true');
-    }
-    
-    // Load showYoutubeSummarizer state from localStorage
-    const storedYoutubeSummarizerValue = localStorage.getItem('showYoutubeSummarizer');
-    if (storedYoutubeSummarizerValue !== null) {
-      setShowYoutubeSummarizer(storedYoutubeSummarizerValue === 'true');
-    }
-    
-    // Load showWebCrawler state from localStorage
-    const storedWebCrawlerValue = localStorage.getItem('showWebCrawler');
-    if (storedWebCrawlerValue !== null) {
-      setShowWebCrawler(storedWebCrawlerValue === 'true');
-    }
-    
-    // Load showImageGenerator state from localStorage
-    const storedImageGeneratorValue = localStorage.getItem('showImageGenerator');
-    if (storedImageGeneratorValue !== null) {
-      setShowImageGenerator(storedImageGeneratorValue === 'true');
-    }
-    
-    // Load showBlogWriter state from localStorage
-    const storedBlogWriterValue = localStorage.getItem('showBlogWriter');
-    if (storedBlogWriterValue !== null) {
-      setShowBlogWriter(storedBlogWriterValue === 'true');
-    }
-  }, []);
+  const [showJobAgent, setShowJobAgent] = useState(false);
 
   const toggleSidebar = () => {
     const newValue = !sidebarCollapsed;
     setSidebarCollapsed(newValue);
-    localStorage.setItem('sidebarCollapsed', String(newValue));
   };
   
-  // Update the setShowEmailGenerator function to persist state
+  // Update all the setter functions to remove localStorage persistence
   const persistentSetShowEmailGenerator = (show: boolean) => {
     setShowEmailGenerator(show);
-    localStorage.setItem('showEmailGenerator', String(show));
   };
   
-  // Update the setShowDocumentSummarizer function to persist state
   const persistentSetShowDocumentSummarizer = (show: boolean) => {
     setShowDocumentSummarizer(show);
-    localStorage.setItem('showDocumentSummarizer', String(show));
   };
   
-  // Update the setShowYoutubeSummarizer function to persist state
   const persistentSetShowYoutubeSummarizer = (show: boolean) => {
     setShowYoutubeSummarizer(show);
-    localStorage.setItem('showYoutubeSummarizer', String(show));
   };
   
-  // Update the setShowWebCrawler function to persist state
   const persistentSetShowWebCrawler = (show: boolean) => {
     setShowWebCrawler(show);
-    localStorage.setItem('showWebCrawler', String(show));
   };
   
-  // Update the setShowImageGenerator function to persist state
   const persistentSetShowImageGenerator = (show: boolean) => {
     setShowImageGenerator(show);
-    localStorage.setItem('showImageGenerator', String(show));
   };
   
-  // Update the setShowBlogWriter function to persist state
   const persistentSetShowBlogWriter = (show: boolean) => {
     setShowBlogWriter(show);
-    localStorage.setItem('showBlogWriter', String(show));
+  };
+  
+  const persistentSetShowJobAgent = (show: boolean) => {
+    setShowJobAgent(show);
   };
 
   return (
@@ -134,7 +84,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showImageGenerator,
         setShowImageGenerator: persistentSetShowImageGenerator,
         showBlogWriter,
-        setShowBlogWriter: persistentSetShowBlogWriter
+        setShowBlogWriter: persistentSetShowBlogWriter,
+        showJobAgent,
+        setShowJobAgent: persistentSetShowJobAgent
       }}
     >
       {children}

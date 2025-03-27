@@ -495,14 +495,6 @@ export default function DocumentSummarizerPage() {
         {/* <p className="text-gray-600 dark:text-gray-300 mt-1">
           Upload a PDF document to generate a comprehensive summary with key insights.
         </p> */}
-        
-        {/* Only show API key notice if the API key doesn't exist or we're still checking */}
-        {(!apiKeyExists && apiKeyChecked) && (
-        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
-          <b>Note:</b> This feature requires a Google API key. Add your key to <code>DocSummarizer/DocSummarizer/.env</code> before use.
-          You can get a free API key from <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.
-        </div>
-        )}
       </div>
       
       <div className="flex flex-col lg:flex-row flex-1 p-6 gap-6 overflow-y-auto">

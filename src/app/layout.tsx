@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Source_Serif_4, Lora } from 'next/font/google';
+import { EB_Garamond, Source_Serif_4, Lora } from 'next/font/google';
 import { Providers } from '@/components/Providers';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
@@ -7,7 +7,15 @@ import Chatbot from '@/components/Chatbot';
 import SidebarAwareContent from '@/components/SidebarAwareContent';
 import '@/styles/globals.css';
 
-// Primary font for UI - Source Serif Pro is a classic serif font with excellent readability
+// Primary font - EB Garamond is a classic, elegant serif font
+const garamond = EB_Garamond({
+  subsets: ['latin'],
+  variable: '--font-garamond',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+// Primary font - Source Serif 4 for general UI
 const sourceSerif = Source_Serif_4({
   subsets: ['latin'],
   variable: '--font-source-serif',
@@ -15,7 +23,7 @@ const sourceSerif = Source_Serif_4({
   weight: ['400', '500', '600', '700'],
 });
 
-// Secondary font for headings - Lora is an elegant serif font with professional characteristics
+// Heading font - Lora
 const lora = Lora({
   subsets: ['latin'],
   variable: '--font-lora',
@@ -24,7 +32,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: 'MercadoVista',
+  title: 'Agenix',
   description: 'A marketplace for AI agents and workflow automation',
   keywords: 'AI, agents, marketplace, workflow, automation',
   authors: [{ name: 'AI Agent Marketplace Team' }],
@@ -40,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sourceSerif.variable} ${lora.variable}`}>
-      <body className="font-sans transition-colors duration-300 antialiased">
+    <html lang="en" suppressHydrationWarning className={`${garamond.variable} ${sourceSerif.variable} ${lora.variable} font-sans`}>
+      <body className="font-serif transition-colors duration-300 antialiased">
         <Providers>
           <div className="min-h-screen bg-background overflow-hidden">
             <div className="animate-fade-in">

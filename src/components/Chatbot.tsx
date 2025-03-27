@@ -53,7 +53,7 @@ const Chatbot: React.FC = () => {
       const welcomeMessage: Message = {
         id: 'welcome',
         type: 'bot',
-        content: "Hello! I'm MercadoAI, your assistant for this marketplace. I can help you explore AI agents, navigate the platform, or answer any questions you might have. How can I assist you today?",
+        content: "Hello! I'm Agenix AI, your assistant for this marketplace. I can help you explore AI agents, navigate the platform, or answer any questions you might have. How can I assist you today?",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);

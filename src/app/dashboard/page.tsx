@@ -13,6 +13,8 @@ import {
   Legend 
 } from 'chart.js';
 import { Users, Zap, Clock, Cpu, Brain, TrendingUp, Calendar, Mail, FileText, Lightbulb, Book, Search, PenTool, Briefcase, DollarSign, Target, ShoppingCart, BarChart, FileEdit, Rocket, LayoutDashboard } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSidebarState } from '@/hooks/use-sidebar-state';
 import AgentCard from '@/components/AgentCard';
 import WorkflowSelector from '@/components/WorkflowSelector';
 import Playground from '@/components/Playground';
@@ -29,6 +31,9 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const router = useRouter();
+  const { setShowJobAgent } = useSidebarState();
+
   const agentCategories = [
     {
       title: "Marketing Agents",
@@ -246,53 +251,67 @@ const Dashboard = () => {
     ?.agents || [];
 
   return (
-    <div className="p-6 max-w-9xl mx-auto space-y-0.5">
-      {/* <div className="flex items-center mb-4">
+    <div className="p-6 max-w-9xl mx-auto space-y-6">
+      {/* Title */}
+      <div className="flex items-center mb-4">
         <LayoutDashboard className="h-8 w-8 mr-3 text-blue-600 dark:text-blue-400" />
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-      </div> */}
+      </div>
 
-      {/* Stats Overview */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-lg bg-${stat.color}-100 dark:bg-${stat.color}-900/30`}>
-                  <stat.icon className={`h-6 w-6 text-${stat.color}-600 dark:text-${stat.color}-400`} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</h3>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                </div>
-              </div>
-              <span className={`text-sm font-semibold ${stat.change.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {stat.change}
-              </span>
+      {/* Job Agent Card */}
+      <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
+          <div className="flex items-center">
+            <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 mr-4">
+              <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Job Agent Workflow</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                Process job descriptions to generate summaries, cold emails, and interview preparation guides
+              </p>
             </div>
           </div>
-        ))}
+          <button
+            onClick={() => {
+              setShowJobAgent(true);
+              router.push('/agents/job-agent');
+            }}
+            className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm flex items-center transition-colors"
+          >
+            <span>Configure</span>
+            <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center">
+              <FileText className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white">Job Summary</h3>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Comprehensive breakdown of job requirements</p>
+          </div>
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center">
+              <Mail className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white">Cold Email</h3>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Tailored outreach to potential employers</p>
+          </div>
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white">Interview Prep</h3>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Preparation guide for upcoming interviews</p>
+          </div>
+        </div>
       </section>
-
-     
-
+      
       {/* Workflow Playground */}
-      <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-          Workflow Playground
-        </h2>
-        
-        <WorkflowSelector
-          workflows={workflows}
-          selectedWorkflow={selectedWorkflow}
-          onSelect={setSelectedWorkflow}
-        />
-        
-        <Playground
-          selectedWorkflow={selectedWorkflow}
-          agents={filteredAgents}
-        />
-      </section>
+      
     </div>
   );
 };

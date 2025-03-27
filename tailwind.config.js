@@ -1,3 +1,5 @@
+const { fontFamily } = require('tailwindcss/defaultTheme')
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -9,8 +11,13 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        // Primary font for general UI
         sans: ['var(--font-source-serif)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
-        heading: ['var(--font-lora)', 'var(--font-source-serif)', 'ui-serif', 'Georgia', 'Times New Roman', 'serif'],
+        // Heading font
+        heading: ['var(--font-lora)', 'var(--font-source-serif)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+        // Individual font families for specific use cases
+        sourceSerif: ['var(--font-source-serif)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+        lora: ['var(--font-lora)', 'var(--font-source-serif)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",

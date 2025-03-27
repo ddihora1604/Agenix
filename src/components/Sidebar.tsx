@@ -85,7 +85,7 @@ const Sidebar: React.FC = () => {
                     className="object-contain" 
                     priority
                   />
-                  <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-black to-black dark:from-blue-400 dark:via-pink-400 dark:to-indigo-400">MercadoVista</h1>
+                  <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-black to-black dark:from-blue-400 dark:via-pink-400 dark:to-indigo-400">Agenix</h1>
                 </div>
               </div>
             )}

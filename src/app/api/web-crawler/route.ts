@@ -209,8 +209,16 @@ async function executeWebCrawlerScript(scriptPath: string, urlFile: string, ques
   // Prepare command arguments based on whether it's an analysis or a question
   let args = [scriptPath];
   
-  // Add the URL using the --urls parameter
-  args.push('--urls', websiteUrl);
+  // Add the URL using the --urls parameter with proper quoting
+  // Adding double quotes around the URL to ensure query parameters are treated as part of the URL
+  if (process.platform === 'win32') {
+    // For Windows platform, we need to handle the URL with special care
+    args.push('--urls');
+    args.push(`"${websiteUrl}"`);
+  } else {
+    // For non-Windows platforms
+    args.push('--urls', websiteUrl);
+  }
   
   // Add the question parameter if provided - properly escaped to handle spaces
   if (question) {
