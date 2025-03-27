@@ -20,7 +20,7 @@ import { useProfilePanel } from '@/hooks/use-profile-panel';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, showEmailGenerator, showDocumentSummarizer, showYoutubeSummarizer, showWebCrawler, showImageGenerator } = useSidebarState();
+  const { sidebarCollapsed, toggleSidebar, showEmailGenerator, showDocumentSummarizer, showYoutubeSummarizer, showWebCrawler, showImageGenerator, showBlogWriter } = useSidebarState();
   const { toggleProfilePanel } = useProfilePanel();
   const router = useRouter();
   
@@ -33,7 +33,8 @@ const Sidebar: React.FC = () => {
         ...(showDocumentSummarizer ? [{ label: 'Document Summarizer', path: '/agents/document-summarizer' }] : []),
         ...(showYoutubeSummarizer ? [{ label: 'YouTube Summarizer', path: '/agents/youtube-summarizer' }] : []),
         ...(showWebCrawler ? [{ label: 'Web Crawler with Q&A', path: '/agents/web-crawler' }] : []),
-        ...(showImageGenerator ? [{ label: 'Image Generator', path: '/agents/image-generator' }] : [])
+        ...(showImageGenerator ? [{ label: 'Image Generator', path: '/agents/image-generator' }] : []),
+        ...(showBlogWriter ? [{ label: 'Blog Writer', path: '/agents/blog-writer' }] : [])
       ].filter(item => item) // Filter out empty items
     },
     { icon: BookOpen, label: 'Documentation', path: '/documentation' },

@@ -15,6 +15,8 @@ interface SidebarState {
   setShowWebCrawler: (show: boolean) => void;
   showImageGenerator: boolean;
   setShowImageGenerator: (show: boolean) => void;
+  showBlogWriter: boolean;
+  setShowBlogWriter: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
@@ -28,6 +30,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [showYoutubeSummarizer, setShowYoutubeSummarizer] = useState(false);
   const [showWebCrawler, setShowWebCrawler] = useState(false);
   const [showImageGenerator, setShowImageGenerator] = useState(false);
+  const [showBlogWriter, setShowBlogWriter] = useState(false);
 
   // Load sidebar states from localStorage on mount
   useEffect(() => {
@@ -64,6 +67,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const storedImageGeneratorValue = localStorage.getItem('showImageGenerator');
     if (storedImageGeneratorValue !== null) {
       setShowImageGenerator(storedImageGeneratorValue === 'true');
+    }
+    
+    // Load showBlogWriter state from localStorage
+    const storedBlogWriterValue = localStorage.getItem('showBlogWriter');
+    if (storedBlogWriterValue !== null) {
+      setShowBlogWriter(storedBlogWriterValue === 'true');
     }
   }, []);
 
@@ -102,6 +111,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setShowImageGenerator(show);
     localStorage.setItem('showImageGenerator', String(show));
   };
+  
+  // Update the setShowBlogWriter function to persist state
+  const persistentSetShowBlogWriter = (show: boolean) => {
+    setShowBlogWriter(show);
+    localStorage.setItem('showBlogWriter', String(show));
+  };
 
   return (
     <SidebarContext.Provider 
@@ -117,7 +132,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showWebCrawler,
         setShowWebCrawler: persistentSetShowWebCrawler,
         showImageGenerator,
-        setShowImageGenerator: persistentSetShowImageGenerator
+        setShowImageGenerator: persistentSetShowImageGenerator,
+        showBlogWriter,
+        setShowBlogWriter: persistentSetShowBlogWriter
       }}
     >
       {children}

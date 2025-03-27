@@ -250,6 +250,15 @@
   .dark .email-content p {
     @apply text-gray-300;
   }
+
+  .prose-invert {
+    --tw-prose-body: theme('colors.gray.300');
+    --tw-prose-headings: theme('colors.white');
+    --tw-prose-links: theme('colors.blue.400');
+    --tw-prose-bold: theme('colors.white');
+    --tw-prose-bullets: theme('colors.gray.400');
+    --tw-prose-hr: theme('colors.gray.700');
+  }
 }
 
 /* Animations */
