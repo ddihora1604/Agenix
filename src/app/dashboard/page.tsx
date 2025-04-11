@@ -12,7 +12,7 @@ import {
   Tooltip, 
   Legend 
 } from 'chart.js';
-import { Users, Zap, Clock, Cpu, Brain, TrendingUp, Calendar, Mail, FileText, Lightbulb, Book, Search, PenTool, Briefcase, DollarSign, Target, ShoppingCart, BarChart, FileEdit, Rocket, LayoutDashboard } from 'lucide-react';
+import { Users, Zap, Clock, Cpu, Brain, TrendingUp, Calendar, Mail, FileText, Lightbulb, Book, Search, PenTool, Briefcase, DollarSign, Target, ShoppingCart, BarChart, FileEdit, Rocket, LayoutDashboard, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
 import AgentCard from '@/components/AgentCard';
@@ -32,7 +32,7 @@ ChartJS.register(
 
 const Dashboard = () => {
   const router = useRouter();
-  const { setShowJobAgent } = useSidebarState();
+  const { setShowJobAgent, setCaseStudyAgent } = useSidebarState();
 
   const agentCategories = [
     {
@@ -310,6 +310,35 @@ const Dashboard = () => {
         </div>
       </section>
       
+      {/* Case Study Agent Card */}
+      <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
+          <div className="flex items-center">
+            <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/30 mr-4">
+              <BookOpen className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Case Study Agent Workflow</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                Generate professional case studies on any topic with structured content and key insights
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setCaseStudyAgent(true);
+              router.push('/agents/case-study-agent');
+            }}
+            className="mt-4 md:mt-0 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium text-sm flex items-center transition-colors"
+          >
+            <span>Configure</span>
+            <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
       {/* Workflow Playground */}
       
     </div>

@@ -20,7 +20,7 @@ import { useProfilePanel } from '@/hooks/use-profile-panel';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, showEmailGenerator, showDocumentSummarizer, showYoutubeSummarizer, showWebCrawler, showImageGenerator, showBlogWriter } = useSidebarState();
+  const { sidebarCollapsed, toggleSidebar, showEmailGenerator, showDocumentSummarizer, showYoutubeSummarizer, showWebCrawler, showImageGenerator, showBlogWriter, showJobAgent, showCaseStudyAgent } = useSidebarState();
   const { toggleProfilePanel } = useProfilePanel();
   const router = useRouter();
   
@@ -34,7 +34,9 @@ const Sidebar: React.FC = () => {
         ...(showYoutubeSummarizer ? [{ label: 'YouTube Summarizer', path: '/agents/youtube-summarizer' }] : []),
         ...(showWebCrawler ? [{ label: 'Web Crawler with Q&A', path: '/agents/web-crawler' }] : []),
         ...(showImageGenerator ? [{ label: 'Image Generator', path: '/agents/image-generator' }] : []),
-        ...(showBlogWriter ? [{ label: 'Blog Writer', path: '/agents/blog-writer' }] : [])
+        ...(showBlogWriter ? [{ label: 'Blog Writer', path: '/agents/blog-writer' }] : []),
+        ...(showJobAgent ? [{ label: 'Job Agent', path: '/agents/job-agent' }] : []),
+        ...(showCaseStudyAgent ? [{ label: 'Case Study Agent', path: '/agents/case-study-agent' }] : [])
       ].filter(item => item) // Filter out empty items
     },
     { icon: BookOpen, label: 'Documentation', path: '/documentation' },

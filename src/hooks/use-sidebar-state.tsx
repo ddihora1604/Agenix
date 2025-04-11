@@ -19,6 +19,8 @@ interface SidebarState {
   setShowBlogWriter: (show: boolean) => void;
   showJobAgent: boolean;
   setShowJobAgent: (show: boolean) => void;
+  showCaseStudyAgent: boolean;
+  setCaseStudyAgent: (show: boolean) => void;
 }
 
 const SidebarContext = React.createContext<SidebarState | undefined>(undefined);
@@ -33,6 +35,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [showImageGenerator, setShowImageGenerator] = useState(false);
   const [showBlogWriter, setShowBlogWriter] = useState(false);
   const [showJobAgent, setShowJobAgent] = useState(false);
+  const [showCaseStudyAgent, setCaseStudyAgent] = useState(false);
 
   const toggleSidebar = () => {
     const newValue = !sidebarCollapsed;
@@ -67,6 +70,10 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const persistentSetShowJobAgent = (show: boolean) => {
     setShowJobAgent(show);
   };
+  
+  const persistentSetCaseStudyAgent = (show: boolean) => {
+    setCaseStudyAgent(show);
+  };
 
   return (
     <SidebarContext.Provider 
@@ -86,7 +93,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showBlogWriter,
         setShowBlogWriter: persistentSetShowBlogWriter,
         showJobAgent,
-        setShowJobAgent: persistentSetShowJobAgent
+        setShowJobAgent: persistentSetShowJobAgent,
+        showCaseStudyAgent,
+        setCaseStudyAgent: persistentSetCaseStudyAgent
       }}
     >
       {children}

@@ -1,0 +1,40 @@
+# Core LangChain dependencies
+langchain>=0.1.9
+langchain-community>=0.0.38
+langchain-core>=0.1.0
+langchain-google-genai>=0.0.11
+langchain-text-splitters>=0.0.1
+
+# Google AI and Vector Store
+google-generativeai>=0.4.1
+faiss-cpu>=1.7.4
+
+# Web Scraping and PDF Processing
+beautifulsoup4>=4.13.3
+requests>=2.32.3
+lxml>=4.9.3
+PyPDF2>=3.0.0
+bs4>=0.0.1
+
+# Data Processing and Visualization
+numpy>=1.24.0
+matplotlib>=3.7.1
+tqdm>=4.66.1
+
+# Configuration and Utilities
+python-dotenv>=1.0.1
+PyYAML>=5.3
+colorama>=0.4.6
+rich>=13.0.0
+argparse>=1.4.0
+tenacity>=8.2.3
+
+# Development Tools
+pytest>=6.0.0
+black>=22.0.0
+
+# Additional AI Services
+fal-client>=0.7.0
+langchain-groq>=0.0.1
+Panel>=1.0.0
+Console>=0.9.0
