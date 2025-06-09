@@ -1,6 +1,6 @@
 # Agenix - An AI Agent Marketplace
 
-![Prototype Demo](https://youtu.be/sq5AJ2MbMgY?si=hHuUwBSU3L0Kaa_1)
+Prototype Demo: https://youtu.be/sq5AJ2MbMgY?si=hHuUwBSU3L0Kaa_1
 
 ## 🚀 Project Overview
 
