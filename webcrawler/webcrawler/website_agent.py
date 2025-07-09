@@ -17,7 +17,7 @@ from datetime import datetime
 load_dotenv()
 
 class WebsiteQueryAgent:
-    def __init__(self, api_key: str = None, model_name: str = "models/gemini-1.5-flash"):
+    def __init__(self, api_key: str = None, model_name: str = "models/gemini-2.5-flash"):
         """Initialize the website query agent with Google API key and model"""
         # Use provided API key or get from environment
         self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")

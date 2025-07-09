@@ -1,6 +1,8 @@
 import os
 import sys
 from datetime import datetime
+# Add this import at the top of email_generator.py, right after the other imports
+from dotenv import load_dotenv
 
 # Import the pydantic patch modules with fallbacks
 try:
@@ -165,7 +167,7 @@ def create_email_generator():
         # Initialize the language model with Gemini 1.5 Flash
         try:
             llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 temperature=0.7,
                 google_api_key=GOOGLE_API_KEY,
                 convert_system_message_to_human=True
