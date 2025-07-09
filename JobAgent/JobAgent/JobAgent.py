@@ -49,7 +49,7 @@ class JDSummarizer:
         
         # Initialize LLM
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",  # Using a more stable model
+            model="gemini-2.5-flash",  # Using a more stable model
             temperature=0.7,
             max_output_tokens=2048,
             google_api_key=GOOGLE_API_KEY,  # Pass as string

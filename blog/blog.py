@@ -34,7 +34,7 @@ class BlogGenerator:
     def __init__(self, api_key: str):
         self.llm = ChatGroq(
             groq_api_key=api_key,
-            model_name="llama3-70b-8192"  # ✅ Use a valid model
+            model_name="gemma2-9b-it"  # ✅ Use a valid model
         )
         self.setup_prompts()
 

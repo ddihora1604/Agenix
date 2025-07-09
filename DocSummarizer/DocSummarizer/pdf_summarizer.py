@@ -526,7 +526,7 @@ def generate_summary_with_model(prompt, genai):
         try:
             print(f"Initializing Gemini model (attempt {retry_count + 1}/{max_retries + 1})...", file=sys.stderr)
             # Try models in order until one works
-            model_options = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+            model_options = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.0-pro']
             model = None
             
             for model_name in model_options:
@@ -882,7 +882,7 @@ def summarize_pdf(pdf_path: str, summary_length="standard", focus_areas=None) ->
             
             # Try multiple model options in case the primary one fails
             llm = None
-            model_options = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+            model_options = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.0-pro']
             for model_name in model_options:
                 try:
                     print(f"Trying model: {model_name}", file=sys.stderr)

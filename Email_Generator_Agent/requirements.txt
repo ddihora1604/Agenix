@@ -1,5 +1,5 @@
-langchain==0.1.9
-langchain-google-genai==0.0.11
-python-dotenv==1.0.1
-colorama==0.4.6
-google-generativeai>=0.3.0 
+langchain
+langchain-google-genai
+python-dotenv
+colorama
+google-generativeai

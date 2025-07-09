@@ -52,7 +52,7 @@ class CaseStudyAgent:
         
         # Initialize LLM with conservative settings to reduce API usage
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-flash",
             temperature=0.2,  # Lower temp for more consistent responses
             max_output_tokens=2048,  # Reduced token output
             google_api_key=GOOGLE_API_KEY,
