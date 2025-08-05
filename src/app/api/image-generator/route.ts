@@ -4,6 +4,26 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 
+// Function to check if running in a virtual environment
+async function checkIfVirtualEnv(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const checkVenvScript = 'import sys; print(hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix))';
+    
+    exec(`${pythonCommand} -c "${checkVenvScript}"`, (error, stdout) => {
+      if (error) {
+        console.error(`Error checking virtual environment: ${error.message}`);
+        resolve(false);
+        return;
+      }
+      
+      const isVirtualEnv = stdout.trim() === 'True';
+      console.log(`Running in virtual environment: ${isVirtualEnv}`);
+      resolve(isVirtualEnv);
+    });
+  });
+}
+
 // Helper function to run a command and get its output
 async function runCommand(command: string, args: string[], options: any = {}): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -100,9 +120,14 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
     await runCommand(pipCommand, ['--version'], { cwd: scriptDir });
     console.log('Pip installation verified successfully');
     
+    // Check if running in a virtual environment
+    const isVirtualEnv = await checkIfVirtualEnv();
+    
     // Install required packages
     console.log('Installing required packages...');
-    await runCommand(pipCommand, ['install', '-r', 'requirement.txt'], { cwd: scriptDir });
+    // Always use basic install without --user flag to avoid virtualenv issues
+const pipArgs = ['install', '-r', 'requirement.txt'];
+    await runCommand(pipCommand, pipArgs, { cwd: scriptDir });
     console.log('Required packages installed successfully');
     
     return;

@@ -105,6 +105,22 @@ async function verifyPythonInstallation(): Promise<boolean> {
   }
 }
 
+// Function to check if running in a virtual environment
+async function checkIfVirtualEnv(): Promise<boolean> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const result = await runCommand(pythonCommand, [
+      '-c', 
+      'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
+    ], {});
+    
+    return result.trim() === "1";
+  } catch (error) {
+    // If there's an error, assume not in virtualenv to be safe
+    return false;
+  }
+}
+
 // Ensure Python dependencies are installed for web crawler - optimized version
 async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
   try {
@@ -155,9 +171,12 @@ async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
     console.log("Installing Python dependencies for web crawler...");
     
     try {
+      // Check if running in a virtualenv
+      const isVirtualEnv = await checkIfVirtualEnv();
+      
       // First attempt with primary packages (these are required)
       console.log("Installing required Python packages...");
-      await runCommand(PYTHON_COMMAND, ['-m', 'pip', 'install', '--user', '--no-cache-dir', ...requiredPackages], { 
+      await runCommand(PYTHON_COMMAND, ['-m', 'pip', 'install', '--no-cache-dir', ...requiredPackages], { 
         cwd: scriptDir,
         env: PYTHON_ENV,
         timeout: 180000, // 3 minutes timeout
@@ -167,7 +186,7 @@ async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
       // Now try optional packages but don't fail if they don't install
       try {
         console.log("Installing optional Python packages (will continue if these fail)...");
-        await runCommand(PYTHON_COMMAND, ['-m', 'pip', 'install', '--user', '--no-cache-dir', ...optionalPackages], { 
+        await runCommand(PYTHON_COMMAND, ['-m', 'pip', 'install', '--no-cache-dir', ...optionalPackages], { 
           cwd: scriptDir,
           env: PYTHON_ENV,
           timeout: 180000
@@ -490,7 +509,8 @@ Please set up Python and required dependencies:
 1. Make sure Python 3.8+ is installed from https://www.python.org/downloads/
 2. Open a command prompt/terminal as administrator
 3. Run this command to install dependencies:
-   python -m pip install --user langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   python -m pip install langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 4. Restart your application server
 `
         }, { status: 500 });
@@ -816,9 +836,11 @@ Python module '${missingModule}' is missing. Please install it with:
 
 1. Open a command prompt/terminal as administrator
 2. Run:
-   pip install --user ${missingModule}
+   pip install ${missingModule}
+   (Note: Add --user flag if you're not using a virtual environment)
 3. If that fails, try:
-   python -m pip install --user ${missingModule}
+   python -m pip install ${missingModule}
+   (Note: Add --user flag if you're not using a virtual environment)
 4. Restart your application server
 `
         }, { status: 500 });
@@ -861,7 +883,8 @@ Please set up Python and required dependencies:
 1. Make sure Python 3.8+ is installed from https://www.python.org/downloads/
 2. Open a command prompt/terminal as administrator
 3. Run this command to install dependencies:
-   python -m pip install --user langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   python -m pip install langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 4. Restart your application server
 `;
       }
@@ -911,7 +934,8 @@ Please set up Python and required dependencies:
 1. Make sure Python 3.8+ is installed from https://www.python.org/downloads/
 2. Open a command prompt/terminal as administrator
 3. Run this command to install dependencies:
-   python -m pip install --user langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   python -m pip install langchain langchain-community langchain-google-genai google-generativeai beautifulsoup4 lxml python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 4. Restart your application server
 `
       }, { status: 500 });

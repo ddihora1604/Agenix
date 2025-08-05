@@ -200,7 +200,7 @@ function processOutput(result: ScriptExecutionResult): ProcessedOutput {
     
     return {
       json: {
-        message: `Missing Python dependency: ${packageToInstall || missingModule}. Please run: pip install -r CaseStudyAgent/requirements.txt`,
+        message: `Missing Python dependency: ${packageToInstall || missingModule}. Please run: pip install -r CaseStudyAgent/requirements.txt (Note: Add --user flag if you're not using a virtual environment)`,
         isPythonError: true,
         setupRequired: true,
         missingModule: packageToInstall || missingModule
@@ -321,4 +321,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

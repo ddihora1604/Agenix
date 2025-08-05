@@ -88,6 +88,22 @@ async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
   }
 }
 
+// Function to check if running in a virtual environment
+async function checkIfVirtualEnv(): Promise<boolean> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const result = await runCommand(pythonCommand, [
+      '-c', 
+      'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
+    ], {});
+    
+    return result.trim() === "1";
+  } catch (error) {
+    // If there's an error, assume not in virtualenv to be safe
+    return false;
+  }
+}
+
 // Ensure Python dependencies are installed
 async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
   try {
@@ -110,9 +126,12 @@ async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     
     try {
+      // Check if running in a virtualenv
+      const isVirtualEnv = await checkIfVirtualEnv();
+      
       // First attempt with pip
       console.log("Trying with pip install...");
-      await runCommand('pip', ['install', '--user', '--no-cache-dir', ...requiredPackages], { 
+      await runCommand('pip', ['install', '--no-cache-dir', ...requiredPackages], { 
         cwd: scriptDir,
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
@@ -122,8 +141,11 @@ async function ensurePythonDependencies(scriptDir: string): Promise<boolean> {
       console.log("Pip install failed, trying with python -m pip...");
       
       try {
+        // Check if running in a virtualenv (again, in case the first check didn't run)
+        const isVirtualEnv = await checkIfVirtualEnv();
+        
         // Second attempt with python -m pip
-        await runCommand(pythonCommand, ['-m', 'pip', 'install', '--user', '--no-cache-dir', ...requiredPackages], { 
+        await runCommand(pythonCommand, ['-m', 'pip', 'install', '--no-cache-dir', ...requiredPackages], { 
           cwd: scriptDir,
           env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
         });
@@ -366,9 +388,11 @@ Please set up Python and required dependencies:
 1. Make sure Python 3.8+ is installed from https://www.python.org/downloads/
 2. Open a command prompt/terminal as administrator
 3. Run this command to install dependencies:
-   pip install --user youtube-transcript-api google-generativeai python-dotenv
+   pip install youtube-transcript-api google-generativeai python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 4. If that fails, try:
-   python -m pip install --user youtube-transcript-api google-generativeai python-dotenv
+   python -m pip install youtube-transcript-api google-generativeai python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 5. Restart your application server
 `;
       }
@@ -417,9 +441,11 @@ Please set up Python and required dependencies:
 1. Make sure Python 3.8+ is installed from https://www.python.org/downloads/
 2. Open a command prompt/terminal as administrator
 3. Run this command:
-   pip install --user youtube-transcript-api google-generativeai python-dotenv
+   pip install youtube-transcript-api google-generativeai python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 4. If that fails, try:
-   python -m pip install --user youtube-transcript-api google-generativeai python-dotenv
+   python -m pip install youtube-transcript-api google-generativeai python-dotenv
+   (Note: Add --user flag if you're not using a virtual environment)
 5. Restart your application server
 `
       }, { status: 500 });
@@ -429,4 +455,4 @@ Please set up Python and required dependencies:
       message: error.message || 'An error occurred while summarizing the video' 
     }, { status: 500 });
   }
-} 
+}

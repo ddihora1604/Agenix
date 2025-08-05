@@ -501,7 +501,7 @@ export async function POST(request: NextRequest) {
       if (errorMessage.includes('ModuleNotFoundError')) {
         const moduleMatch = errorMessage.match(/No module named '([^']+)'/);
         const missingModule = moduleMatch ? moduleMatch[1] : 'unknown module';
-        errorMessage = `Missing Python module: ${missingModule}. Please install it with pip.`;
+        errorMessage = `Missing Python module: ${missingModule}. Please install it with pip (add --user flag if you're not using a virtual environment).`;
       }
       
       return NextResponse.json({ error: errorMessage }, { status: 500 });

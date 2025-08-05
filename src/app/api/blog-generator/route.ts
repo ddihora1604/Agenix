@@ -149,8 +149,12 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
 
     // Install packages if needed
     if (packagesToInstall.length > 0) {
-      // Use --user flag to avoid permission issues
-      const pipArgs = ['install', '--user', '--upgrade', ...packagesToInstall];
+      // Check if running in a virtualenv
+      const isVirtualEnv = await checkIfVirtualEnv();
+      
+      // Only use --user flag if NOT in a virtualenv
+      // Always use basic install without --user flag to avoid virtualenv issues
+      const pipArgs = ['install', '--upgrade', ...packagesToInstall];
       
       try {
         await runCommand('pip', pipArgs, { cwd: scriptDir });
@@ -163,6 +167,22 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
   } catch (error: any) {
     // Rethrow with enhanced info
     throw new Error(`Python dependency error: ${error.message}`);
+  }
+}
+
+// Function to check if running in a virtual environment
+async function checkIfVirtualEnv(): Promise<boolean> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const result = await runCommand(pythonCommand, [
+      '-c', 
+      'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
+    ], {});
+    
+    return result.trim() === "1";
+  } catch (error) {
+    // If there's an error, assume not in virtualenv to be safe
+    return false;
   }
 }
 
@@ -401,4 +421,4 @@ if __name__ == "__main__":
       stack: error.stack
     }, { status: 500 });
   }
-} 
+}

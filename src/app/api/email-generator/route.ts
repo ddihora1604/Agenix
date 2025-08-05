@@ -115,6 +115,22 @@ async function verifyPythonInstallation(): Promise<boolean> {
   }
 }
 
+// Function to check if running in a virtual environment
+async function checkIfVirtualEnv(): Promise<boolean> {
+  try {
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const result = await runCommand(pythonCommand, [
+      '-c',
+      'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
+    ], {});
+    
+    return result.trim() === "1";
+  } catch (error) {
+    // If there's an error, assume not in virtualenv to be safe
+    return false;
+  }
+}
+
 // Direct Python script execution with safer dependency checking
 async function ensurePythonDependencies(scriptDir: string): Promise<void> {
   try {
@@ -150,8 +166,11 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
 
     // Install packages if needed
     if (packagesToInstall.length > 0) {
-      // Use --user flag to avoid permission issues
-      const pipArgs = ['install', '--user', '--upgrade', ...packagesToInstall];
+      // Check if running in a virtualenv
+      const isVirtualEnv = await checkIfVirtualEnv();
+      
+      // Always use basic install without --user flag to avoid virtualenv issues
+      const pipArgs = ['install', '--upgrade', ...packagesToInstall];
       
       try {
         await runCommand('pip', pipArgs, { cwd: scriptDir });
@@ -169,6 +188,8 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
     throw new Error(`Python dependency error: ${error.message}`);
   }
 }
+
+// Function to check if running in a virtual environment is defined above
 
 // Function to ensure compatibility files exist
 async function ensureCompatibilityFiles(scriptDir: string): Promise<void> {
@@ -380,4 +401,4 @@ function cleanAndFormatEmail(emailContent: string): string {
     .replace(/^Email Generator AI terminated.*$/m, '');
   
   return cleanedEmail;
-} 
+}

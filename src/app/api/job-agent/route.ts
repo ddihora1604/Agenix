@@ -243,7 +243,7 @@ function processOutput(result: ScriptExecutionResult, taskType: string): Process
           isPythonError: true,
           setupRequired: true,
           missingModule: 'faiss-cpu',
-          installInstructions: 'pip install faiss-cpu langchain langchain-core langchain-community'
+          installInstructions: 'pip install faiss-cpu langchain langchain-core langchain-community (Note: Add --user flag if you\'re not using a virtual environment)'
         },
         status: 500
       };
@@ -251,7 +251,7 @@ function processOutput(result: ScriptExecutionResult, taskType: string): Process
     
     return {
       json: {
-        message: `Missing Python dependency: ${packageToInstall || missingModule}. Please run: pip install -r JobAgent/requirements.txt`,
+        message: `Missing Python dependency: ${packageToInstall || missingModule}. Please run: pip install -r JobAgent/requirements.txt (Note: Add --user flag if you're not using a virtual environment)`,
         isPythonError: true,
         setupRequired: true,
         missingModule: packageToInstall || missingModule
@@ -356,7 +356,7 @@ function processOutput(result: ScriptExecutionResult, taskType: string): Process
   
   // If we used the lite version, add a note to the results
   if (useLiteVersion) {
-    const liteModeMessage = "[Note: Using simplified mode. For full AI analysis, please install all requirements: pip install -r JobAgent/requirements.txt]";
+    const liteModeMessage = "[Note: Using simplified mode. For full AI analysis, please install all requirements: pip install -r JobAgent/requirements.txt (Add --user flag if you're not using a virtual environment)]";
     
     if (results.summary) {
       results.summary = `${liteModeMessage}\n\n${results.summary}`;
@@ -480,4 +480,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
