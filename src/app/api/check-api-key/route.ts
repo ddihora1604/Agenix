@@ -1,10 +1,49 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import util from 'util';
+import { spawn } from 'child_process';
 
-const execPromise = util.promisify(exec);
+// Helper function to run commands with proper path handling
+function runCommand(command: string, args: string[] = [], options: any = {}): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Quote arguments that contain spaces for Windows
+    const quotedArgs = args.map(arg => arg.includes(' ') ? `"${arg}"` : arg);
+    
+    const proc = spawn(command, quotedArgs, {
+      ...options,
+      shell: true,
+      windowsHide: true
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout?.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        const error = new Error(`Command failed with code ${code}: ${stderr}`);
+        (error as any).stderr = stderr;
+        (error as any).stdout = stdout;
+        reject(error);
+      } else {
+        resolve(stdout);
+      }
+    });
+
+    proc.on('error', (err) => {
+      (err as any).stderr = stderr;
+      (err as any).stdout = stdout;
+      reject(err);
+    });
+  });
+}
 
 export async function GET() {
   try {
@@ -32,18 +71,14 @@ export async function GET() {
       
       // Run the script with a timeout
       const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-      console.log(`Running: ${pythonCommand} ${scriptPath}`);
+      console.log(`Running: ${pythonCommand} "${scriptPath}"`);
       
-      const { stdout, stderr } = await execPromise(`${pythonCommand} ${scriptPath}`, {
+      const stdout = await runCommand(pythonCommand, [scriptPath], {
         cwd: blogDir,
         timeout: 10000 // 10 second timeout
       });
       
       console.log("Script output:", stdout);
-      
-      if (stderr) {
-        console.error("Script error:", stderr);
-      }
       
       // Check if the script indicated the key is valid
       const isValid = stdout.includes("All checks passed") || 

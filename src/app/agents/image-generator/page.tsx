@@ -15,6 +15,7 @@ const ImageGeneratorPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [falBalanceError, setFalBalanceError] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pythonError, setPythonError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -36,6 +37,7 @@ const ImageGeneratorPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       setApiKeyMissing(false);
+      setFalBalanceError(false);
       setPythonError(false);
     }
   }, [imagePrompt]);
@@ -80,6 +82,13 @@ const ImageGeneratorPage: React.FC = () => {
       console.log(`Image generation request completed in ${requestTime.toFixed(2)} seconds`);
       
       if (!response.ok) {
+        // Check for FAL API balance errors
+        if (data.isFalBalanceError) {
+          console.error('FAL balance error:', data.message);
+          setFalBalanceError(true);
+          throw new Error('FAL API account has insufficient balance. Please top up your balance at fal.ai/dashboard/billing to continue generating images.');
+        }
+        
         // Check for API key related errors
         if (data.isApiKeyError) {
           console.error('API key error:', data.message);
@@ -182,7 +191,43 @@ const ImageGeneratorPage: React.FC = () => {
           </ol>
         </motion.div>
       )}
-      
+
+      {falBalanceError && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
+        >
+          <h3 className="flex items-center text-red-800 dark:text-red-400 font-medium mb-2">
+            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+            Insufficient Balance
+          </h3>
+          <p className="text-red-700 dark:text-red-300 text-sm mb-3">
+            Your FAL API account has insufficient balance to generate images. 
+            Please top up your account to continue using this feature.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a 
+              href="https://www.fal.ai/dashboard/billing" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+            >
+              Top Up Balance
+            </a>
+            <button
+              onClick={() => {
+                setFalBalanceError(false);
+                setError(null);
+              }}
+              className="inline-flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {pythonError && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -239,7 +284,7 @@ const ImageGeneratorPage: React.FC = () => {
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-h-[120px]"
                 rows={4}
               />
-              {error && !apiKeyMissing && !pythonError && retryCount <= 2 && (
+              {error && !apiKeyMissing && !falBalanceError && !pythonError && retryCount <= 2 && (
                 <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-start">
                   <AlertTriangle className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
                   {error}

@@ -6,22 +6,22 @@ import os from 'os';
 
 // Function to check if running in a virtual environment
 async function checkIfVirtualEnv(): Promise<boolean> {
-  return new Promise((resolve) => {
+  try {
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-    const checkVenvScript = 'import sys; print(hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix))';
+    // Use a simpler approach that doesn't have quote escaping issues
+    const result = await runCommand(pythonCommand, [
+      '-c',
+      'import sys; print("True" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "False")'
+    ]);
     
-    exec(`${pythonCommand} -c "${checkVenvScript}"`, (error, stdout) => {
-      if (error) {
-        console.error(`Error checking virtual environment: ${error.message}`);
-        resolve(false);
-        return;
-      }
-      
-      const isVirtualEnv = stdout.trim() === 'True';
-      console.log(`Running in virtual environment: ${isVirtualEnv}`);
-      resolve(isVirtualEnv);
-    });
-  });
+    const isVirtualEnv = result.trim() === 'True';
+    console.log(`Running in virtual environment: ${isVirtualEnv}`);
+    return isVirtualEnv;
+  } catch (error) {
+    console.error('Error checking virtual environment:', error);
+    // Don't fail the process if we can't check - just assume not in venv
+    return false;
+  }
 }
 
 // Helper function to run a command and get its output
@@ -111,10 +111,10 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
   console.log('Python installation verified successfully');
 
   // Check if the requirements.txt file exists
-  const requirementsPath = path.join(scriptDir, 'requirement.txt');
+  const requirementsPath = path.join(scriptDir, 'requirements.txt');
   if (!fs.existsSync(requirementsPath)) {
     console.error(`Requirements file not found at: ${requirementsPath}`);
-    throw new Error('requirement.txt file not found in the Fluxai directory');
+    throw new Error('requirements.txt file not found in the Fluxai directory');
   }
   console.log(`Found requirements file at: ${requirementsPath}`);
 
@@ -134,7 +134,7 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
     // Install required packages
     console.log('Installing required packages...');
     // Always use basic install without --user flag to avoid virtualenv issues
-const pipArgs = ['install', '-r', 'requirement.txt'];
+    const pipArgs = ['install', '-r', 'requirements.txt'];
     await runCommand(pipCommand, pipArgs, { cwd: scriptDir });
     console.log('Required packages installed successfully');
     
@@ -157,8 +157,9 @@ async function runImageGenerator(scriptPath: string, promptFile: string, scriptD
         ...process.env,
         PYTHONIOENCODING: 'utf-8',
         PYTHONUNBUFFERED: '1', // Prevent Python from buffering output
-        // Set the FAL_KEY environment variable directly in the child process
-        FAL_KEY: '2d2b231c-4c34-45c3-a032-91e8ce74dab3:634d0793cb3b509444227c1f6bddaa2d'
+        // Set both FAL_KEY and FAL_API_KEY environment variables from the .env file
+        FAL_KEY: process.env.FAL_KEY || process.env.FAL_API_KEY || '835adc54-f3c8-4001-846c-2ef45fc155f0:ffc78497b3e30009517c3f1c46b89e34',
+        FAL_API_KEY: process.env.FAL_KEY || process.env.FAL_API_KEY || '835adc54-f3c8-4001-846c-2ef45fc155f0:ffc78497b3e30009517c3f1c46b89e34'
       }
     });
   } catch (error: any) {
@@ -345,11 +346,11 @@ if __name__ == "__main__":
           fs.writeFileSync(scriptPath, basicScript);
           console.log(`Created flux_ai.py script at: ${scriptPath}`);
           
-          // Create requirement.txt
-          const requirementPath = path.join(scriptDir, 'requirement.txt');
+          // Create requirements.txt
+          const requirementPath = path.join(scriptDir, 'requirements.txt');
           if (!fs.existsSync(requirementPath)) {
             fs.writeFileSync(requirementPath, 'fal_client\npython-dotenv\n');
-            console.log(`Created requirement.txt at: ${requirementPath}`);
+            console.log(`Created requirements.txt at: ${requirementPath}`);
           }
         } catch (createError: any) {
           console.error('Failed to create script:', createError);
@@ -417,7 +418,7 @@ try:
     if not api_key:
         debug("No API key found in .env files, trying hardcoded API key")
         # Use the API key directly - this is the same one from your .env file
-        api_key = "2d2b231c-4c34-45c3-a032-91e8ce74dab3:634d0793cb3b509444227c1f6bddaa2d"
+        api_key = "835adc54-f3c8-4001-846c-2ef45fc155f0:ffc78497b3e30009517c3f1c46b89e34"
     
     if not api_key:
         log_error("FAL_API_KEY environment variable not set and no hardcoded key available.")
@@ -556,12 +557,19 @@ except Exception as e:
     } catch (error: any) {
       let isPythonError = false;
       let isApiKeyError = false;
+      let isFalBalanceError = false;
       let message = error.message || 'An unexpected error occurred';
       
       console.error('Error during image generation:', message);
       
       // Check for specific error types
-      if (message.includes('Python') || 
+      if (message.includes('Exhausted balance') || 
+          message.includes('User is locked') || 
+          message.includes('Top up your balance')) {
+        isFalBalanceError = true;
+        message = 'FAL API account has insufficient balance. Please top up your balance at fal.ai/dashboard/billing to continue generating images.';
+        console.error('FAL API balance error detected');
+      } else if (message.includes('Python') || 
           message.includes('ModuleNotFound') || 
           message.includes('pip') ||
           message.includes('dependency')) {
@@ -578,6 +586,7 @@ except Exception as e:
         message,
         isPythonError,
         isApiKeyError,
+        isFalBalanceError,
         details: error.stderr || 'No additional error details available'
       }, { status: 500 });
     } finally {
