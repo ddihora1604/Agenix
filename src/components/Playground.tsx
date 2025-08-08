@@ -141,15 +141,34 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
 
   // Add polling interval ref to track when to stop polling
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingAttemptsRef = useRef<number>(0);
+  const MAX_POLLING_ATTEMPTS = 60; // Maximum 5 minutes of polling (60 attempts * 5 seconds)
+  const ENABLE_POLLING = false; // Set to true if you want polling enabled
   
-  // Add function to check for markdown files
+  // Add function to check for markdown files with improved error handling
   const checkMarkdownFiles = async () => {
     if (activeWorkflowState !== 'running') {
       console.log('Not checking for markdown files - workflow not running');
       return;
     }
     
-    console.log('Checking for markdown files...');
+    // Check polling attempts limit
+    pollingAttemptsRef.current++;
+    if (pollingAttemptsRef.current > MAX_POLLING_ATTEMPTS) {
+      console.log('Maximum polling attempts reached, stopping polling');
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      setActiveWorkflowState('error');
+      addNotification({
+        message: 'Timeout: Agents took too long to complete. Please try again.',
+        type: 'error'
+      });
+      return;
+    }
+    
+    console.log(`Checking for markdown files... (attempt ${pollingAttemptsRef.current}/${MAX_POLLING_ATTEMPTS})`);
     
     // Only check for agents that are in non-completed state
     const pendingAgents = results.filter(result => result.status !== 'completed' && result.status !== 'error');
@@ -176,12 +195,19 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
       return;
     }
     
-    // Check for markdown files for each pending agent
+    // Check for markdown files for each pending agent with better error handling
     for (const result of pendingAgents) {
       console.log(`Checking markdown file for agent: ${result.agentId}`);
       try {
-        const response = await fetch(`/api/markdown?agentId=${result.agentId}`);
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
+        const response = await fetch(`/api/markdown?agentId=${result.agentId}`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
         console.log(`API response for ${result.agentId}: ${response.status}`);
         
         if (response.ok) {
@@ -213,30 +239,40 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
           } else {
             console.log(`No content in markdown file for ${result.agentId}`);
           }
-        } else if (response.status !== 404) {
-          // Log other errors (not including 404 which is expected)
-          const errorData = await response.json();
-          console.error(`Error fetching markdown file for ${result.agentId}:`, errorData);
+        } else if (response.status === 404) {
+          // 404 is expected when file doesn't exist yet - don't log as error
+          console.log(`No markdown file found for ${result.agentId} yet (404)`);
         } else {
-          console.log(`No markdown file found for ${result.agentId} (404)`);
+          // Log other errors but don't crash
+          console.warn(`Error fetching markdown file for ${result.agentId}: ${response.status}`);
         }
       } catch (error) {
-        console.error(`Error checking markdown file for ${result.agentId}:`, error);
+        // Handle fetch errors gracefully
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn(`Timeout checking markdown file for ${result.agentId}`);
+        } else {
+          console.warn(`Error checking markdown file for ${result.agentId}:`, error);
+        }
+        // Don't break the polling loop for individual failures
       }
     }
   };
   
   // Start/stop polling when workflow state changes
   useEffect(() => {
-    if (activeWorkflowState === 'running') {
-      // Start polling every 3 seconds
-      pollingIntervalRef.current = setInterval(checkMarkdownFiles, 3000);
+    if (activeWorkflowState === 'running' && ENABLE_POLLING) {
+      // Reset polling attempts counter
+      pollingAttemptsRef.current = 0;
+      // Start polling every 5 seconds (less aggressive than 3 seconds)
+      pollingIntervalRef.current = setInterval(checkMarkdownFiles, 5000);
     } else {
-      // Stop polling when workflow is not running
+      // Stop polling when workflow is not running or polling is disabled
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      // Reset counter when stopping
+      pollingAttemptsRef.current = 0;
     }
     
     // Cleanup on unmount
@@ -539,7 +575,9 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedWorkflow, agents }) => 
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
     }
-    pollingIntervalRef.current = setInterval(checkMarkdownFiles, 3000);
+    // Reset attempts counter
+    pollingAttemptsRef.current = 0;
+    pollingIntervalRef.current = setInterval(checkMarkdownFiles, 5000);
     
     try {
       // Get combined inputs

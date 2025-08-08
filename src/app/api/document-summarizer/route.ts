@@ -16,7 +16,7 @@ const execPromise = promisify(exec);
 
 // Use the specific Python executable path where dependencies are installed
 const PYTHON_PATH = process.platform === 'win32'
-  ? 'C:\\Users\\ddihora1604\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
+  ? 'python'
   : 'python3';
 
 // Increase process timeout to handle large documents
@@ -48,8 +48,15 @@ async function executePythonScript(scriptPath: string, filePath: string, options
     console.log(`Starting Python process at: ${new Date().toISOString()}`);
     
     // Use spawn instead of exec for better handling of large outputs
-    const childProcess = spawn(PYTHON_PATH, args, {
+    // For Windows, properly handle paths with spaces
+    const processArgs = process.platform === 'win32' ? 
+      args.map(arg => arg.includes(' ') && !arg.startsWith('"') ? `"${arg}"` : arg) : 
+      args;
+    
+    const childProcess = spawn(PYTHON_PATH, processArgs, {
       timeout: PROCESS_TIMEOUT,
+      shell: process.platform === 'win32', // Use shell on Windows to handle quoted arguments
+      windowsHide: true, // Hide the window to prevent console flashing on Windows
       env: {
         ...process.env,
         PYTHONIOENCODING: 'utf-8',
@@ -104,7 +111,7 @@ async function executePythonScript(scriptPath: string, filePath: string, options
     // Handle process completion
     childProcess.on('close', (code: number | null) => {
       const duration = (Date.now() - startTime) / 1000;
-      console.log(`Python process completed with code ${code} in ${duration.toFixed(2)}s`);
+      // console.log(`Python process completed with code ${code} in ${duration.toFixed(2)}s`);
       
       if (code !== 0) {
         console.error(`Process failed with code ${code}`);

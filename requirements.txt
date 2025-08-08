@@ -1,7 +1,7 @@
 # Core LangChain dependencies
-langchain
+langchain==0.1.14
 langchain-community
-langchain-core
+langchain-core==0.1.37
 langchain-google-genai
 langchain-text-splitters
 
@@ -14,6 +14,7 @@ beautifulsoup4
 requests
 lxml
 PyPDF2
+pypdf
 bs4
 
 # Data Processing and Visualization
@@ -38,3 +39,5 @@ fal-client
 langchain-groq
 Panel
 Console
+
+youtube-transcript-api

@@ -10,8 +10,16 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
+      // For Windows, properly quote arguments that contain spaces
+      const quotedArgs = args.map(arg => {
+        if (arg.includes(' ') && !arg.startsWith('"')) {
+          return `"${arg}"`;
+        }
+        return arg;
+      });
+      
       // For Windows, use process.spawn with shell:true to ensure PowerShell compatibility
-      proc = spawn(command, args, {
+      proc = spawn(command, quotedArgs, {
         ...options,
         shell: true,
         windowsHide: true // Hide the window to prevent console flashing

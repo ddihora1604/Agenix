@@ -93,8 +93,16 @@ async function executeScript(params: {
   // Determine which Python command to use
   const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
   
+  // For Windows, properly handle paths with spaces
+  const processArgs = process.platform === 'win32' ? 
+    args.map(arg => arg.includes(' ') && !arg.startsWith('"') ? `"${arg}"` : arg) : 
+    args;
+  
   // Execute the Python script
-  const pythonProcess = spawn(pythonCommand, args);
+  const pythonProcess = spawn(pythonCommand, processArgs, {
+    shell: process.platform === 'win32', // Use shell on Windows to handle quoted arguments
+    windowsHide: true // Hide the window to prevent console flashing on Windows
+  });
   
   // Set up a timeout (180 seconds - increased for LLM processing and potential rate limiting)
   const timeout = setTimeout(() => {

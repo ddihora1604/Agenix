@@ -10,8 +10,16 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
-      // For Windows, use process.spawn with shell:true to ensure PowerShell compatibility
-      proc = spawn(command, args, {
+      // For Windows, properly quote arguments that contain spaces
+      const quotedArgs = args.map(arg => {
+        if (arg.includes(' ') && !arg.startsWith('"')) {
+          return `"${arg}"`;
+        }
+        return arg;
+      });
+      
+      // Use process.spawn with shell:true to ensure PowerShell compatibility
+      proc = spawn(command, quotedArgs, {
         ...options,
         shell: true,
         windowsHide: true // Hide the window to prevent console flashing
@@ -23,11 +31,11 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     let stdout = '';
     let stderr = '';
 
-    proc.stdout.on('data', (data) => {
+    proc.stdout?.on('data', (data) => {
       stdout += data.toString();
     });
 
-    proc.stderr.on('data', (data) => {
+    proc.stderr?.on('data', (data) => {
       stderr += data.toString();
     });
 
@@ -232,6 +240,7 @@ async function runEmailGenerator(scriptPath: string, promptFile: string, scriptD
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     
     // Run the Python script with the prompt file as argument
+    // Ensure paths with spaces are properly handled
     return await runCommand(pythonCommand, [scriptPath, promptFile], {
       cwd: scriptDir,
       env: {
