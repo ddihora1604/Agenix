@@ -4,9 +4,7 @@ langchain-core>=0.3.0
 langchain-text-splitters>=0.3.0
 langchain-google-genai>=2.0.0
 google-generativeai>=0.8.0
-faiss-cpu
-beautifulsoup4
-lxml
 python-dotenv
 requests
-numpy<2.0
+beautifulsoup4
+tenacity

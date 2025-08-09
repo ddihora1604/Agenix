@@ -45,7 +45,7 @@ try:
         raise
         
     try:
-        from langchain.prompts import PromptTemplate
+        from langchain_core.prompts import PromptTemplate
         from langchain.chains import LLMChain
         print("Successfully imported langchain components")
     except ImportError as e:

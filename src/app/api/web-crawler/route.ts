@@ -6,7 +6,10 @@ import os from 'os';
 
 // Constants for better configuration
 const PROCESS_TIMEOUT = 4 * 60 * 1000; // 4 minutes timeout
-const PYTHON_COMMAND = process.platform === 'win32' ? 'python' : 'python3';
+// Use the dedicated virtual environment for Web Crawler Agent
+const PYTHON_COMMAND = process.platform === 'win32' ? 
+  path.join(process.cwd(), 'webcrawler', 'venv', 'Scripts', 'python.exe') : 
+  path.join(process.cwd(), 'webcrawler', 'venv', 'bin', 'python');
 const PYTHON_ENV = {
   ...process.env,
   PYTHONIOENCODING: 'utf-8',
@@ -21,6 +24,12 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
+      // For Windows, quote the command if it contains spaces
+      let quotedCommand = command;
+      if (command.includes(' ') && !command.startsWith('"')) {
+        quotedCommand = `"${command}"`;
+      }
+      
       // For Windows, properly quote arguments that contain spaces
       const quotedArgs = args.map(arg => {
         if (arg.includes(' ') && !arg.startsWith('"')) {
@@ -30,7 +39,7 @@ async function runCommand(command: string, args: string[], options: any = {}): P
       });
       
       // For Windows, use process.spawn with shell:true to ensure PowerShell compatibility
-      proc = spawn(command, quotedArgs, {
+      proc = spawn(quotedCommand, quotedArgs, {
         ...options,
         shell: true,
         windowsHide: true // Hide the window to prevent console flashing

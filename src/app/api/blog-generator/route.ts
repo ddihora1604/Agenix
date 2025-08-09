@@ -10,6 +10,12 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
+      // For Windows, quote the command if it contains spaces
+      let quotedCommand = command;
+      if (command.includes(' ') && !command.startsWith('"')) {
+        quotedCommand = `"${command}"`;
+      }
+      
       // For Windows, properly quote arguments that contain spaces
       const quotedArgs = args.map(arg => {
         if (arg.includes(' ') && !arg.startsWith('"')) {
@@ -19,7 +25,7 @@ async function runCommand(command: string, args: string[], options: any = {}): P
       });
       
       // For Windows, use process.spawn with shell:true to ensure PowerShell compatibility
-      proc = spawn(command, quotedArgs, {
+      proc = spawn(quotedCommand, quotedArgs, {
         ...options,
         shell: true,
         windowsHide: true // Hide the window to prevent console flashing
@@ -61,21 +67,23 @@ async function runCommand(command: string, args: string[], options: any = {}): P
 // Check if Python package is installed
 async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Blog Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'blog', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'blog', 'venv', 'bin', 'python');
     
     // Special handling for langchain_groq which might have Pydantic compatibility issues during check
     if (packageName === 'langchain_groq') {
       // We'll skip the check and assume it's installed if we've previously installed it
-      const localPythonPath = process.env.PYTHONPATH || '';
-      const userSitePackages = process.platform === 'win32' ? 
-        path.join(os.homedir(), 'AppData', 'Roaming', 'Python', 'Python311', 'site-packages') :
-        path.join(os.homedir(), '.local', 'lib', 'python3.11', 'site-packages');
+      const venvSitePackages = process.platform === 'win32' ? 
+        path.join(process.cwd(), 'blog', 'venv', 'Lib', 'site-packages') :
+        path.join(process.cwd(), 'blog', 'venv', 'lib', 'python3.11', 'site-packages');
       
       // Look for package files rather than trying to import the package
       const possiblePaths = [
-        path.join(userSitePackages, 'langchain_groq'),
-        path.join(userSitePackages, 'langchain-groq.dist-info'),
-        path.join(userSitePackages, 'langchain_groq.egg-info')
+        path.join(venvSitePackages, 'langchain_groq'),
+        path.join(venvSitePackages, 'langchain-groq.dist-info'),
+        path.join(venvSitePackages, 'langchain_groq.egg-info')
       ];
       
       for (const pkgPath of possiblePaths) {
@@ -89,7 +97,7 @@ async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
     }
     
     // For other packages, use the regular check
-    const command = `${pythonCommand} -c "import ${packageName.split('==')[0].split('>=')[0]}; print('Package found')"`;
+    const command = `"${pythonCommand}" -c "import ${packageName.split('==')[0].split('>=')[0]}; print('Package found')"`;
     
     const { stdout, stderr } = await new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
       exec(command, (error, stdout, stderr) => {
@@ -106,9 +114,13 @@ async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
 // Check if Python is correctly installed and accessible
 async function verifyPythonInstallation(): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Blog Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'blog', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'blog', 'venv', 'bin', 'python');
+    
     const { stdout } = await new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
-      exec(`${pythonCommand} --version`, (error, stdout, stderr) => {
+      exec(`"${pythonCommand}" --version`, (error, stdout, stderr) => {
         if (error) {
           reject(error);
         } else {
@@ -157,18 +169,20 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
 
     // Install packages if needed
     if (packagesToInstall.length > 0) {
-      // Check if running in a virtualenv
-      const isVirtualEnv = await checkIfVirtualEnv();
+      // Use the virtual environment pip
+      const pipCommand = process.platform === 'win32' ? 
+        path.join(scriptDir, 'venv', 'Scripts', 'pip.exe') : 
+        path.join(scriptDir, 'venv', 'bin', 'pip');
       
-      // Only use --user flag if NOT in a virtualenv
-      // Always use basic install without --user flag to avoid virtualenv issues
       const pipArgs = ['install', '--upgrade', ...packagesToInstall];
       
       try {
-        await runCommand('pip', pipArgs, { cwd: scriptDir });
+        await runCommand(pipCommand, pipArgs, { cwd: scriptDir });
       } catch (pipError) {
-        // Try with python -m pip as a fallback
-        const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+        // Try with python -m pip as a fallback using virtual environment python
+        const pythonCommand = process.platform === 'win32' ? 
+          path.join(scriptDir, 'venv', 'Scripts', 'python.exe') : 
+          path.join(scriptDir, 'venv', 'bin', 'python');
         await runCommand(pythonCommand, ['-m', 'pip', ...pipArgs], { cwd: scriptDir });
       }
     }
@@ -181,7 +195,11 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
 // Function to check if running in a virtual environment
 async function checkIfVirtualEnv(): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Blog Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'blog', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'blog', 'venv', 'bin', 'python');
+    
     const result = await runCommand(pythonCommand, [
       '-c', 
       'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
@@ -197,13 +215,46 @@ async function checkIfVirtualEnv(): Promise<boolean> {
 // Function to run the blog generator script
 async function runBlogGenerator(scriptPath: string, topicFile: string, scriptDir: string): Promise<string> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Blog Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(scriptDir, 'venv', 'Scripts', 'python.exe') : 
+      path.join(scriptDir, 'venv', 'bin', 'python');
     
-    // Execute the script with the topic file as input
+    // Load environment variables from blog's .env file
+    const envPath = path.join(scriptDir, '.env');
+    const envVars: { [key: string]: string | undefined } = { ...process.env };
+    
+    try {
+      const fs = await import('fs');
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const envLines = envContent.split('\n');
+        
+        for (const line of envLines) {
+          const trimmedLine = line.trim();
+          if (trimmedLine && !trimmedLine.startsWith('#')) {
+            const [key, ...valueParts] = trimmedLine.split('=');
+            if (key && valueParts.length > 0) {
+              envVars[key.trim()] = valueParts.join('=').trim();
+            }
+          }
+        }
+        console.log('Blog Generator API: Loaded environment variables from .env file');
+      } else {
+        console.warn('Blog Generator API: .env file not found at', envPath);
+      }
+    } catch (envError) {
+      console.warn('Blog Generator API: Error loading .env file:', envError);
+    }
+    
+    // Execute the script with the topic file as input and environment variables
     const output = await runCommand(
       pythonCommand, 
       [scriptPath, topicFile], 
-      { cwd: scriptDir }
+      { 
+        cwd: scriptDir,
+        env: envVars
+      }
     );
     
     return output;

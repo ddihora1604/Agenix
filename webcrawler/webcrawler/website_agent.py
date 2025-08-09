@@ -3,7 +3,7 @@ import argparse
 from typing import List, Dict
 from dotenv import load_dotenv
 from langchain_community.document_loaders import WebBaseLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
@@ -125,7 +125,7 @@ class WebsiteQueryAgent:
         if os.path.exists(path):
             # allow_dangerous_deserialization=True is required for newer versions of LangChain
             # to explicitly acknowledge we trust this pickle file source
-            self.vector_store = FAISS.load_local(path, self.embeddings)
+            self.vector_store = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             
             # Set up Gemini model for QA with improved settings
             llm = ChatGoogleGenerativeAI(

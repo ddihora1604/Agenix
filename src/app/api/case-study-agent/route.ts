@@ -90,16 +90,24 @@ async function executeScript(params: {
   console.log(`Executing command: python ${args.join(' ')}`);
   console.time('python-execution');
   
-  // Determine which Python command to use
-  const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+  // Use the dedicated virtual environment for Case Study Agent
+  const pythonCommand = process.platform === 'win32' ? 
+    path.join(process.cwd(), 'CaseStudyAgent', 'venv', 'Scripts', 'python.exe') : 
+    path.join(process.cwd(), 'CaseStudyAgent', 'venv', 'bin', 'python');
   
-  // For Windows, properly handle paths with spaces
+  // For Windows, properly handle paths with spaces in the command
+  let execCommand = pythonCommand;
+  if (process.platform === 'win32' && pythonCommand.includes(' ') && !pythonCommand.startsWith('"')) {
+    execCommand = `"${pythonCommand}"`;
+  }
+  
+  // For Windows, properly handle paths with spaces in arguments
   const processArgs = process.platform === 'win32' ? 
     args.map(arg => arg.includes(' ') && !arg.startsWith('"') ? `"${arg}"` : arg) : 
     args;
   
   // Execute the Python script
-  const pythonProcess = spawn(pythonCommand, processArgs, {
+  const pythonProcess = spawn(execCommand, processArgs, {
     shell: process.platform === 'win32', // Use shell on Windows to handle quoted arguments
     windowsHide: true // Hide the window to prevent console flashing on Windows
   });

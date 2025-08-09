@@ -6,10 +6,16 @@ import { spawn } from 'child_process';
 // Helper function to run commands with proper path handling
 function runCommand(command: string, args: string[] = [], options: any = {}): Promise<string> {
   return new Promise((resolve, reject) => {
+    // For Windows, quote the command if it contains spaces
+    let quotedCommand = command;
+    if (process.platform === 'win32' && command.includes(' ') && !command.startsWith('"')) {
+      quotedCommand = `"${command}"`;
+    }
+    
     // Quote arguments that contain spaces for Windows
     const quotedArgs = args.map(arg => arg.includes(' ') ? `"${arg}"` : arg);
     
-    const proc = spawn(command, quotedArgs, {
+    const proc = spawn(quotedCommand, quotedArgs, {
       ...options,
       shell: true,
       windowsHide: true
@@ -69,8 +75,11 @@ export async function GET() {
         return NextResponse.json({ valid: false, error: 'Validation script not found' }, { status: 200 });
       }
       
-      // Run the script with a timeout
-      const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+      // Run the script with a timeout using the blog's virtual environment
+      const pythonCommand = process.platform === 'win32' ? 
+        path.join(blogDir, 'venv', 'Scripts', 'python.exe') : 
+        path.join(blogDir, 'venv', 'bin', 'python');
+        
       console.log(`Running: ${pythonCommand} "${scriptPath}"`);
       
       const stdout = await runCommand(pythonCommand, [scriptPath], {

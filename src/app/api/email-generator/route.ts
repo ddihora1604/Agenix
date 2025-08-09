@@ -10,6 +10,12 @@ async function runCommand(command: string, args: string[], options: any = {}): P
     // Special handling for Windows PowerShell
     let proc;
     if (process.platform === 'win32') {
+      // For Windows, quote the command if it contains spaces
+      let quotedCommand = command;
+      if (command.includes(' ') && !command.startsWith('"')) {
+        quotedCommand = `"${command}"`;
+      }
+      
       // For Windows, properly quote arguments that contain spaces
       const quotedArgs = args.map(arg => {
         if (arg.includes(' ') && !arg.startsWith('"')) {
@@ -19,7 +25,7 @@ async function runCommand(command: string, args: string[], options: any = {}): P
       });
       
       // Use process.spawn with shell:true to ensure PowerShell compatibility
-      proc = spawn(command, quotedArgs, {
+      proc = spawn(quotedCommand, quotedArgs, {
         ...options,
         shell: true,
         windowsHide: true // Hide the window to prevent console flashing
@@ -61,21 +67,23 @@ async function runCommand(command: string, args: string[], options: any = {}): P
 // Check if Python package is installed
 async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Email Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'bin', 'python');
     
     // Special handling for langchain_google_genai which might have Pydantic compatibility issues during check
     if (packageName === 'langchain_google_genai') {
       // We'll skip the check and assume it's installed if we've previously installed it
-      const localPythonPath = process.env.PYTHONPATH || '';
-      const userSitePackages = process.platform === 'win32' ? 
-        path.join(os.homedir(), 'AppData', 'Roaming', 'Python', 'Python311', 'site-packages') :
-        path.join(os.homedir(), '.local', 'lib', 'python3.11', 'site-packages');
+      const venvSitePackages = process.platform === 'win32' ? 
+        path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'Lib', 'site-packages') :
+        path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'lib', 'python3.11', 'site-packages');
       
       // Look for package files rather than trying to import the package
       const possiblePaths = [
-        path.join(userSitePackages, 'langchain_google_genai'),
-        path.join(userSitePackages, 'langchain-google-genai.dist-info'),
-        path.join(userSitePackages, 'langchain_google_genai.egg-info')
+        path.join(venvSitePackages, 'langchain_google_genai'),
+        path.join(venvSitePackages, 'langchain-google-genai.dist-info'),
+        path.join(venvSitePackages, 'langchain_google_genai.egg-info')
       ];
       
       for (const pkgPath of possiblePaths) {
@@ -106,9 +114,13 @@ async function isPythonPackageInstalled(packageName: string): Promise<boolean> {
 // Check if Python is correctly installed and accessible
 async function verifyPythonInstallation(): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Email Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'bin', 'python');
+    
     const { stdout } = await new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
-      exec(`${pythonCommand} --version`, (error, stdout, stderr) => {
+      exec(`"${pythonCommand}" --version`, (error, stdout, stderr) => {
         if (error) {
           reject(error);
         } else {
@@ -126,7 +138,11 @@ async function verifyPythonInstallation(): Promise<boolean> {
 // Function to check if running in a virtual environment
 async function checkIfVirtualEnv(): Promise<boolean> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    // Use the dedicated virtual environment for Email Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'Scripts', 'python.exe') : 
+      path.join(process.cwd(), 'Email_Generator_Agent', 'venv', 'bin', 'python');
+    
     const result = await runCommand(pythonCommand, [
       '-c',
       'import sys; print("1" if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) else "0")'
@@ -174,18 +190,31 @@ async function ensurePythonDependencies(scriptDir: string): Promise<void> {
 
     // Install packages if needed
     if (packagesToInstall.length > 0) {
-      // Check if running in a virtualenv
-      const isVirtualEnv = await checkIfVirtualEnv();
+      // Use the virtual environment pip
+      const pipCommand = process.platform === 'win32' ? 
+        path.join(scriptDir, 'venv', 'Scripts', 'pip.exe') : 
+        path.join(scriptDir, 'venv', 'bin', 'pip');
       
-      // Always use basic install without --user flag to avoid virtualenv issues
       const pipArgs = ['install', '--upgrade', ...packagesToInstall];
       
       try {
-        await runCommand('pip', pipArgs, { cwd: scriptDir });
+        console.log(`Installing packages: ${packagesToInstall.join(', ')}`);
+        await runCommand(pipCommand, pipArgs, { cwd: scriptDir });
+        console.log('Successfully installed packages');
       } catch (pipError) {
-        // Try with python -m pip as a fallback
-        const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-        await runCommand(pythonCommand, ['-m', 'pip', ...pipArgs], { cwd: scriptDir });
+        console.log('Pip command failed, trying with python -m pip...');
+        // Try with python -m pip as a fallback using virtual environment python
+        const pythonCommand = process.platform === 'win32' ? 
+          path.join(scriptDir, 'venv', 'Scripts', 'python.exe') : 
+          path.join(scriptDir, 'venv', 'bin', 'python');
+        
+        try {
+          await runCommand(pythonCommand, ['-m', 'pip', ...pipArgs], { cwd: scriptDir });
+          console.log('Successfully installed packages using python -m pip');
+        } catch (fallbackError) {
+          console.error('Failed to install packages:', fallbackError);
+          throw new Error(`Package installation failed: ${fallbackError}`);
+        }
       }
     }
     
@@ -237,11 +266,19 @@ async function ensureCompatibilityFiles(scriptDir: string): Promise<void> {
 // Run the email generator Python script
 async function runEmailGenerator(scriptPath: string, promptFile: string, scriptDir: string): Promise<string> {
   try {
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    console.log('Starting email generator execution...');
+    // Use the dedicated virtual environment for Email Generator
+    const pythonCommand = process.platform === 'win32' ? 
+      path.join(scriptDir, 'venv', 'Scripts', 'python.exe') : 
+      path.join(scriptDir, 'venv', 'bin', 'python');
+    
+    console.log(`Python command: ${pythonCommand}`);
+    console.log(`Script path: ${scriptPath}`);
+    console.log(`Prompt file: ${promptFile}`);
     
     // Run the Python script with the prompt file as argument
     // Ensure paths with spaces are properly handled
-    return await runCommand(pythonCommand, [scriptPath, promptFile], {
+    const result = await runCommand(pythonCommand, [scriptPath, promptFile], {
       cwd: scriptDir,
       env: {
         ...process.env,
@@ -249,18 +286,26 @@ async function runEmailGenerator(scriptPath: string, promptFile: string, scriptD
         PYTHONUNBUFFERED: '1' // Prevent Python from buffering output
       }
     });
+    
+    console.log('Email generator execution completed successfully');
+    return result;
   } catch (error: any) {
+    console.error('Email generator execution failed:', error);
     if (error.stderr && error.stderr.includes('ModuleNotFoundError')) {
       // Missing Python module error
+      console.error('Module not found:', error.stderr);
       throw new Error(`Missing Python module: ${error.stderr}`);
     } else if (error.stderr && error.stderr.includes('API key')) {
       // API key error
+      console.error('API key error:', error.stderr);
       throw new Error('Google API Key is missing or invalid');
     } else if (error.message.includes('ENOENT') || !error.stderr) {
       // Python not found
+      console.error('Python not found or not accessible');
       throw new Error('Python is not properly installed or accessible');
     } else {
       // Other errors
+      console.error('General error:', error.message);
       throw new Error(`Failed to run email generator: ${error.message}`);
     }
   }

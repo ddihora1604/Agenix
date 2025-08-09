@@ -1,6 +1,6 @@
-langchain
-langchain_community
-langchain_groq
+langchain>=0.3.0
+langchain_community>=0.3.0
+langchain_groq>=0.3.0
 Console
 Panel
 Markdown

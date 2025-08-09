@@ -1,7 +1,7 @@
 from langchain_groq import ChatGroq
-from langchain.prompts import PromptTemplate
-from langchain.schema import AIMessage
-from langchain.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from typing import List
 import os
@@ -14,8 +14,10 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.markdown import Markdown
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file in the same directory as this script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(script_dir, '.env')
+load_dotenv(dotenv_path=env_path)
 
 console = Console()
 
@@ -99,10 +101,22 @@ class BlogGenerator:
                 "style": style
             })
 
-            # ✅ Fix: Extract content correctly
-            title_meta_text = title_meta_response.content.strip().split("\n")
-            title = title_meta_text[0] if title_meta_text else "Untitled Blog"
-            meta_description = title_meta_text[1] if len(title_meta_text) > 1 else "No description available."
+            # ✅ Fix: Extract content correctly and parse title/meta better
+            title_meta_text = title_meta_response.content.strip()
+            lines = [line.strip() for line in title_meta_text.split("\n") if line.strip()]
+            
+            # Try to extract title and meta description more intelligently
+            title = "Untitled Blog"
+            meta_description = "No description available."
+            
+            for line in lines:
+                if line and not line.startswith(("**", "##", "*", "-")):
+                    if len(line) > 20 and len(line) < 200:  # Likely title or meta
+                        if title == "Untitled Blog":
+                            title = line.replace("Title:", "").replace("**", "").strip()
+                        elif meta_description == "No description available." and len(line) <= 155:
+                            meta_description = line.replace("Meta description:", "").replace("**", "").strip()
+                    break
 
             blog_post = BlogPost(
                 title=title,
@@ -110,7 +124,7 @@ class BlogGenerator:
                 sections=sections
             )
 
-            return blog_post.dict()
+            return blog_post.model_dump()
 
     def save_and_display(self, blog_post: dict, output_dir: str = "generated_blogs"):
         """Save blog to a file and display in console"""

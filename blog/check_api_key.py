@@ -1,102 +1,65 @@
+#!/usr/bin/env python3
+"""
+API Key validation script for blog generator
+Checks if GROQ_API_KEY is properly configured and accessible
+"""
+
 import os
 import sys
-import json
-import http.client
 from dotenv import load_dotenv
 
-def check_env_file():
-    """Check if .env file exists and has GROQ_API_KEY set"""
-    print("\n--- Checking .env file ---")
-    
-    # Get the current directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(current_dir, '.env')
-    
-    print(f"Looking for .env file at: {env_path}")
-    
-    if not os.path.exists(env_path):
-        print("[ERROR] .env file does not exist at the expected location!")
-        print("Create a .env file in the blog directory with your GROQ API key")
-        return False
-    
-    print("[OK] .env file exists")
-    
-    # Load environment variables from .env file
-    load_dotenv()
-    
-    # Try to get the API key
-    api_key = os.getenv("GROQ_API_KEY")
-    
-    if not api_key:
-        print("[ERROR] GROQ_API_KEY not found in .env file!")
-        return False
-    
-    if api_key == "your-groq-api-key-here":
-        print("[ERROR] You need to replace 'your-groq-api-key-here' with your actual GROQ API key")
-        return False
-    
-    # Only show a masked version for security
-    masked_key = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
-    print(f"[OK] GROQ_API_KEY found: {masked_key} (length: {len(api_key)})")
-    return api_key
-
-def test_groq_api(api_key):
-    """Test if the GROQ API key is valid by making a simple request"""
-    print("\n--- Testing GROQ API key ---")
-    
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": "llama3-8b-8192",
-        "messages": [
-            {"role": "user", "content": "Say hello in one word"}
-        ],
-        "max_tokens": 10
-    }
-    
-    try:
-        conn = http.client.HTTPSConnection("api.groq.com")
-        conn.request("POST", "/openai/v1/chat/completions", 
-                    body=json.dumps(data), 
-                    headers=headers)
-        response = conn.getresponse()
-        
-        if response.status == 200:
-            print(f"[OK] Success! API key is valid and working")
-            return True
-        elif response.status == 401:
-            print(f"[ERROR] API key is invalid (Unauthorized - 401)")
-            print("Please check that you're using a valid GROQ API key")
-            return False
-        else:
-            result = response.read().decode()
-            print(f"[ERROR] Unexpected response (Status {response.status}):")
-            print(result)
-            return False
-    except Exception as e:
-        print(f"[ERROR] Failed to connect to GROQ API: {e}")
-        return False
-
 def main():
-    print("==== GROQ API Key Checker ====")
-    
-    # Check if .env file exists and contains API key
-    api_key = check_env_file()
-    if not api_key:
-        print("\n[FIX] Create a .env file in the blog directory with:")
-        print("GROQ_API_KEY=your-actual-api-key-here")
-        sys.exit(1)
-    
-    # Test if the API key is valid
-    if test_groq_api(api_key):
-        print("\n[OK] All checks passed! Your GROQ API key is valid and working")
-        sys.exit(0)
-    else:
-        print("\n[ERROR] API key validation failed")
+    try:
+        # Load environment variables from the .env file in the same directory as this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        env_path = os.path.join(script_dir, '.env')
+        
+        # Load the .env file
+        load_dotenv(dotenv_path=env_path)
+        
+        # Check if GROQ_API_KEY is set
+        api_key = os.getenv("GROQ_API_KEY")
+        
+        if not api_key:
+            print("Error: GROQ_API_KEY not found in environment variables")
+            print("Please check your .env file in the blog folder")
+            sys.exit(1)
+        
+        # Basic validation - check if it looks like a GROQ API key
+        if not api_key.startswith('gsk_'):
+            print("Warning: GROQ_API_KEY doesn't appear to follow expected format (should start with 'gsk_')")
+            print("Please verify your API key is correct")
+            sys.exit(1)
+        
+        if len(api_key) < 50:  # GROQ API keys are typically longer
+            print("Warning: GROQ_API_KEY appears to be too short")
+            print("Please verify your API key is complete")
+            sys.exit(1)
+        
+        # Try to import required dependencies
+        try:
+            from langchain_groq import ChatGroq
+            print("Success: langchain_groq dependency is available")
+        except ImportError as e:
+            print(f"Error: Required dependency not found - {e}")
+            print("Please run: pip install langchain-groq")
+            sys.exit(1)
+        
+        # Try to create a ChatGroq instance (this validates the API key format)
+        try:
+            llm = ChatGroq(groq_api_key=api_key, model_name="gemma2-9b-it")
+            print("Success: GROQ API client initialized successfully")
+        except Exception as e:
+            print(f"Error: Failed to initialize GROQ API client - {e}")
+            print("Please verify your API key is valid")
+            sys.exit(1)
+        
+        print("All checks passed! GROQ API key is properly configured.")
+        print(f"API key format: {api_key[:12]}...{api_key[-8:]}")  # Show partial key for confirmation
+        
+    except Exception as e:
+        print(f"Unexpected error during validation: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()
