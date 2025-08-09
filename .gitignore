@@ -25,6 +25,14 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+/Email_Generator_Agent/.env
+/blog/.env
+/CaseStudyAgent/.env
+/DocSummarizer/.env
+/Fluxai/.env
+/JobAgent/.env
+/webcrawler/.env
+/YTSummarizer/.env
 
 # vercel
 .vercel
