@@ -22,17 +22,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# Environment files
 .env*.local
 .env
-/Email_Generator_Agent/.env
-/blog/.env
-/CaseStudyAgent/.env
-/DocSummarizer/.env
-/Fluxai/.env
-/JobAgent/.env
-/webcrawler/.env
-/YTSummarizer/.env
 
 # vercel
 .vercel
@@ -50,5 +42,43 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
-# virtual
-venv
+# virtual environments
+venv/
+*/venv/
+**/venv/
+
+# Python cache files
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Generated content directories
+/blog/generated_blogs/
+*/generated_blogs/
+
+# Temporary files
+*.tmp
+*.temp
+/blog/temp_topic.txt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock

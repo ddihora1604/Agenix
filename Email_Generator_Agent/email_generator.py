@@ -79,22 +79,22 @@ colorama.init()
 script_dir = os.path.dirname(os.path.abspath(__file__))
 print(f"Script directory: {script_dir}")
 
-# Load environment variables from the .env file in the script directory
-dotenv_path = os.path.join(script_dir, '.env')
-print(f"Loading .env from: {dotenv_path}")
+# Load environment variables from the root .env file
+root_dir = os.path.dirname(script_dir)  # Go up one level to the root Agenix directory
+dotenv_path = os.path.join(root_dir, '.env')
+print(f"Loading .env from root: {dotenv_path}")
 
-# Check if .env file exists
+# Fallback to local .env if root doesn't exist (for backward compatibility)
 if not os.path.exists(dotenv_path):
-    print(f"{Fore.RED}Error: .env file not found at {dotenv_path}{Style.RESET_ALL}")
-    # Create a template .env file
-    try:
-        with open(dotenv_path, 'w') as f:
-            f.write("# Replace this with your actual Google API key for Gemini 1.5 Flash\n")
-            f.write("GOOGLE_API_KEY=your-google-api-key-here\n")
-        print(f"{Fore.YELLOW}Created a template .env file. Please edit it with your API key.{Style.RESET_ALL}")
-    except Exception as e:
-        print(f"{Fore.RED}Failed to create template .env file: {str(e)}{Style.RESET_ALL}")
-    sys.exit(2)
+    local_dotenv_path = os.path.join(script_dir, '.env')
+    print(f"Root .env not found, trying local .env at: {local_dotenv_path}")
+    if os.path.exists(local_dotenv_path):
+        dotenv_path = local_dotenv_path
+        print(f"Using local .env file: {dotenv_path}")
+    else:
+        print(f"{Fore.RED}Error: No .env file found in root ({os.path.join(root_dir, '.env')}) or local directory ({local_dotenv_path}){Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Please ensure there's a .env file in the root Agenix directory with your API keys.{Style.RESET_ALL}")
+        sys.exit(2)
 
 # Load the .env file
 load_dotenv(dotenv_path)
@@ -103,7 +103,7 @@ load_dotenv(dotenv_path)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     print(f"{Fore.RED}Error: GOOGLE_API_KEY environment variable not found.{Style.RESET_ALL}")
-    print(f"Please edit the .env file in the Email_Generator_Agent directory with your Google API key:")
+    print(f"Please edit the .env file with your Google API key:")
     print(f"{Fore.YELLOW}GOOGLE_API_KEY=your_api_key_here{Style.RESET_ALL}")
     print(f"Current .env path checked: {dotenv_path}")
     sys.exit(2)

@@ -33,8 +33,21 @@ from google.api_core.exceptions import ResourceExhausted
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from root .env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to the root Agenix directory
+env_path = os.path.join(root_dir, '.env')
+
+# Fallback to local .env if root doesn't exist (for backward compatibility)
+if not os.path.exists(env_path):
+    # Try the CaseStudyAgent directory level first
+    case_study_env = os.path.join(os.path.dirname(script_dir), '.env')
+    if os.path.exists(case_study_env):
+        env_path = case_study_env
+    else:
+        print(f"Warning: No .env file found in root or CaseStudyAgent directory")
+
+load_dotenv(dotenv_path=env_path)
 
 # Get API key as string from environment
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")

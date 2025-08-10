@@ -48,9 +48,10 @@ Agenix is an advanced AI-powered marketplace platform that integrates multiple s
    - Trend identification
 
 7. **Image Generator Agent**
-   - AI-powered image generation
+   - AI-powered image generation using Pollinations AI (free)
    - Custom visual content creation
-   - Multiple style options
+   - Multiple model options (flux, flux-realism, flux-anime, flux-3d, turbo)
+   - No API key required
 
 8. **Job Agent**
    - Automated job posting analysis
@@ -170,7 +171,7 @@ cd ..
 
 **Image Generator Agent:**
 ```bash
-cd Fluxai
+cd Fluxai/Fluxai
 python -m venv venv
 # On Windows:
 venv\Scripts\activate
@@ -178,53 +179,28 @@ venv\Scripts\activate
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
-cd ..
+cd ../..
 ```
 
 #### 3. Configure API Keys
-Create `.env` files in each agent's directory with their required API keys:
+Create a single `.env` file in the root directory with all required API keys:
 
-**Email_Generator_Agent/.env:**
+**Root .env file (Agenix/.env):**
 ```env
+# Google API Key (required for most agents)
 GOOGLE_API_KEY=your_google_api_key_here
+
+# Groq API Key (required for Blog Writer Agent)
 GROQ_API_KEY=your_groq_api_key_here
-```
 
-**blog/.env:**
-```env
-GROQ_API_KEY=your_groq_api_key_here
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**CaseStudyAgent/.env:**
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**webcrawler/.env:**
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**JobAgent/.env:**
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**DocSummarizer/.env:**
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**YTSummarizer/.env:**
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-**Fluxai/.env:**
-```env
+# FAL API Key (optional - for legacy Image Generator compatibility)
 FAL_API_KEY=your_fal_api_key_here
+
+# HuggingFace Token (optional - for advanced NLP features)
+HUGGINGFACE_API_TOKEN=your_huggingface_token_here
 ```
+
+> **Note**: The Image Generator Agent now uses Pollinations AI by default, which is completely free and requires no API key. The FAL API configuration is maintained for backward compatibility but is no longer used due to payment requirements.
 
 #### 4. Start the Development Server
 ```bash
@@ -232,21 +208,6 @@ npm run dev
 ```
 
 The application will be available at [http://localhost:3000](http://localhost:3000)
-
-### How It Works
-
-1. **Main Server**: Next.js runs the frontend and API routes
-2. **Agent Execution**: When you click on any agent in the frontend:
-   - The corresponding API route (`/api/agent-name`) is called
-   - The API route automatically activates the agent's dedicated virtual environment
-   - Dependencies are verified (not reinstalled if already present)
-   - The Python script executes using the isolated environment
-   - Results are returned to the frontend
-
-3. **Dependency Management**: 
-   - Each agent has isolated dependencies to prevent version conflicts
-   - The system checks if packages are already installed before attempting installation
-   - No manual dependency installation needed during runtime
 
 ### Agent-Specific Requirements
 
@@ -259,59 +220,55 @@ The application will be available at [http://localhost:3000](http://localhost:30
 | Job Agent | `langchain>=0.3.0`, `PyPDF2` | 0.3.x (Modern) |
 | Document Summarizer | `langchain>=0.3.0`, `PyPDF2`, `python-dotenv` | 0.3.x (Modern) |
 | YouTube Summarizer | `langchain>=0.3.0`, `youtube-transcript-api` | 0.3.x (Modern) |
-| Image Generator | `fal-client`, `requests`, `python-dotenv` | N/A (Uses FAL API) |
+| Image Generator | `requests`, `fal-client`, `python-dotenv` | N/A (Uses Pollinations AI - Free) |
 
 ## 📁 Project Structure
 
 ```
 Agenix/
-├── .env                     # Environment configuration
+├── .env                     # Centralized environment configuration (all API keys)
 ├── .eslintrc.json          # ESLint configuration
 ├── .git/                    # Git repository files
 ├── .gitignore              # Git ignore rules (includes all .env files)
 ├── .next/                   # Next.js build output
 ├── CaseStudyAgent/         # Case study generation agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── CaseStudyAgent/    # Agent source code
 │       └── casestudy.py   # Main case study script
 ├── DocSummarizer/          # Document summarization agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── DocSummarizer/     # Agent source code
+│       └── pdf_summarizer.py # Main PDF summarizer script
 ├── Email_Generator_Agent/  # Email generation agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── email_generator.py # Main email generation script
 ├── Fluxai/                 # AI image generation agent
-│   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
-│   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── Fluxai/            # Agent source code
+│       ├── venv/              # Isolated Python virtual environment
+│       ├── flux_ai.py     # Original FAL API implementation (deprecated)
+│       ├── pollinations.py # New Pollinations AI implementation
+│       └── requirements.txt # Agent-specific Python dependencies           
 ├── JobAgent/               # Job analysis agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   ├── JobAgent.py        # Main job agent script
 │   └── JobAgent_lite.py   # Lightweight version
 ├── YTSummarizer/          # YouTube video analysis agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── YTSummarizer/      # Agent source code
+│       └── ytsummarizer.py # Main YouTube summarizer script
 ├── blog/                   # Blog generation agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   ├── blog.py            # Main blog generation script
 │   ├── check_api_key.py   # API key validation script
 │   └── generated_blogs/   # Generated blog outputs
 ├── webcrawler/            # Web scraping agent
 │   ├── venv/              # Isolated Python virtual environment
-│   ├── .env               # Agent-specific API keys (gitignored)
 │   ├── requirements.txt   # Agent-specific Python dependencies
 │   └── webcrawler/        # Agent source code
 │       └── website_agent.py # Main web crawler script
@@ -326,10 +283,13 @@ Agenix/
 │   │   ├── api/          # API routes for each agent
 │   │   │   ├── blog-generator/route.ts      # Blog agent API
 │   │   │   ├── case-study-agent/route.ts    # Case study API
+│   │   │   ├── doc-summarizer/route.ts      # Document summarizer API
 │   │   │   ├── email-generator/route.ts     # Email agent API
+│   │   │   ├── image-generator/route.ts     # Image generator API (Pollinations)
 │   │   │   ├── job-agent/route.ts           # Job agent API
 │   │   │   ├── web-crawler/route.ts         # Web crawler API
-│   │   │   └── check-api-key/route.ts       # API key validation
+│   │   │   ├── youtube-summarizer/route.ts  # YouTube summarizer API
+│   │   │   └── check-api-key/route.ts       # Centralized API key validation
 │   │   ├── agents/       # Agent-specific frontend pages
 │   │   ├── dashboard/    # Main dashboard
 │   │   └── workflows/    # Workflow management
@@ -377,12 +337,6 @@ Agenix/
 - **Document Processing**: PyPDF2, BeautifulSoup4
 - **Vector Storage**: FAISS (for web crawler)
 - **Data Processing**: Pandas, Rich (for CLI output)
-
-### Development Tools
-- **Package Management**: npm (frontend), pip (individual agent environments)
-- **Environment Variables**: dotenv with isolated .env files per agent
-- **Error Handling**: Comprehensive error logging and user feedback
-- **Security**: API keys isolated per agent, all .env files gitignored
 
 ## 🧪Using Individual Agents
 
@@ -437,8 +391,9 @@ Agenix/
 8. **Image Generator Agent**
    - Navigate to `/agents/image-generator`
    - Enter image description prompt
-   - Select style preferences
+   - Select style preferences (optional)
    - Click "Generate Image" - the system automatically:
      - Activates the Image Generator's Python venv
-     - Uses FAL API for image generation
+     - Uses Pollinations AI for free image generation
      - Returns high-quality generated images
+   - **Note**: Previously used FAL API, now switched to Pollinations AI due to FAL's payment requirements

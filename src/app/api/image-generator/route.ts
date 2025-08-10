@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
     
     // First try the nested structure
     const nestedDir = path.join(process.cwd(), 'Fluxai', 'Fluxai');
-    const nestedScriptPath = path.join(nestedDir, 'flux_ai.py');
+    const nestedScriptPath = path.join(nestedDir, 'pollinations.py');
     console.log(`Checking for script at: ${nestedScriptPath}`);
     
     if (fs.existsSync(nestedScriptPath)) {
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Try the direct structure
       const directDir = path.join(process.cwd(), 'Fluxai');
-      const directScriptPath = path.join(directDir, 'flux_ai.py');
+      const directScriptPath = path.join(directDir, 'pollinations.py');
       console.log(`Checking for script at: ${directScriptPath}`);
       
       if (fs.existsSync(directScriptPath)) {
@@ -486,8 +486,8 @@ except Exception as e:
     
     // Write the modified script to the temp directory
     fs.writeFileSync(path.join(tempDir, 'temp_flux_ai.py'), modifiedScript, 'utf8');
-    console.log('Modified script created successfully');
-    
+    console.log('Using pollinations.py script directly (free API)');
+
     try {
       // Ensure Python is installed with all required dependencies
       console.log('Ensuring Python dependencies...');
@@ -495,7 +495,7 @@ except Exception as e:
       
       // Run the image generator script
       console.log('Running image generator script...');
-      const output = await runImageGenerator(path.join(tempDir, 'temp_flux_ai.py'), promptFilePath, scriptDir);
+      const output = await runImageGenerator(scriptPath, promptFilePath, scriptDir);
       console.log('Image generator script completed');
       
       // Extract the JSON result from the output

@@ -8,7 +8,7 @@ const nextConfig = {
   
   // Configure image domains for next/image
   images: {
-    domains: ['v3.fal.media'],
+    domains: ['v3.fal.media', 'image.pollinations.ai'],
   },
   
   // Configure webpack to handle node modules

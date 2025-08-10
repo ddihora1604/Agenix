@@ -1,6 +1,23 @@
 from dotenv import load_dotenv
-load_dotenv()  # Load all the environment variables
 import os
+
+# Load environment variables from root .env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to the root Agenix directory
+env_path = os.path.join(root_dir, '.env')
+
+# Fallback to local .env if root doesn't exist
+if not os.path.exists(env_path):
+    # Try the YTSummarizer directory level first
+    yt_summarizer_env = os.path.join(os.path.dirname(script_dir), '.env')
+    if os.path.exists(yt_summarizer_env):
+        env_path = yt_summarizer_env
+        load_dotenv(dotenv_path=env_path)
+    else:
+        # Fall back to default behavior
+        load_dotenv()
+else:
+    load_dotenv(dotenv_path=env_path)
 import sys
 import json
 import time

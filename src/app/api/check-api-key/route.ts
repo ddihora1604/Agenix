@@ -33,7 +33,10 @@ function runCommand(command: string, args: string[] = [], options: any = {}): Pr
     });
 
     proc.on('close', (code) => {
-      if (code !== 0) {
+      // Check if the output indicates success even if code is null or non-zero
+      const isSuccess = stdout.includes('All checks passed!') || stdout.includes('Success:');
+      
+      if (code !== 0 && code !== null && !isSuccess) {
         const error = new Error(`Command failed with code ${code}: ${stderr}`);
         (error as any).stderr = stderr;
         (error as any).stdout = stdout;
@@ -55,14 +58,26 @@ export async function GET() {
   try {
     console.log("API key validation: Request received");
     
-    // Path to the blog directory
+    // Path to the blog directory and root .env file
     const blogDir = path.join(process.cwd(), 'blog');
-    const envFilePath = path.join(blogDir, '.env');
+    const rootEnvFilePath = path.join(process.cwd(), '.env');
     
-    // Check if .env file exists
-    if (!fs.existsSync(envFilePath)) {
-      console.log("API key validation: .env file not found");
-      return NextResponse.json({ valid: false, error: '.env file not found' }, { status: 200 });
+    // Check if root .env file exists (prioritize root, fallback to local)
+    let envFilePath = rootEnvFilePath;
+    if (!fs.existsSync(rootEnvFilePath)) {
+      // Fallback to local .env file for backward compatibility
+      const localEnvFilePath = path.join(blogDir, '.env');
+      if (!fs.existsSync(localEnvFilePath)) {
+        console.log("API key validation: No .env file found in root or blog directory");
+        return NextResponse.json({ 
+          valid: false, 
+          error: 'No .env file found. Please create a .env file in the root directory with your API keys.' 
+        }, { status: 200 });
+      }
+      envFilePath = localEnvFilePath;
+      console.log("API key validation: Using local blog .env file");
+    } else {
+      console.log("API key validation: Using root .env file");
     }
     
     // Run the check_api_key.py script

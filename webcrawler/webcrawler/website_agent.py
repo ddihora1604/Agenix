@@ -13,8 +13,23 @@ import time
 import sys
 from datetime import datetime
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from root .env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to the root Agenix directory
+env_path = os.path.join(root_dir, '.env')
+
+# Fallback to local .env if root doesn't exist
+if not os.path.exists(env_path):
+    # Try the webcrawler directory level first
+    webcrawler_env = os.path.join(os.path.dirname(script_dir), '.env')
+    if os.path.exists(webcrawler_env):
+        env_path = webcrawler_env
+    else:
+        # Fall back to default behavior
+        load_dotenv()
+        env_path = "current directory"
+else:
+    load_dotenv(dotenv_path=env_path)
 
 class WebsiteQueryAgent:
     def __init__(self, api_key: str = None, model_name: str = "models/gemini-2.5-flash"):

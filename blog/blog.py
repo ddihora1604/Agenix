@@ -14,9 +14,20 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.markdown import Markdown
 from dotenv import load_dotenv
 
-# Load environment variables from .env file in the same directory as this script
+# Load environment variables from root .env file
 script_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(script_dir, '.env')
+root_dir = os.path.dirname(script_dir)  # Go up one level to the root Agenix directory
+env_path = os.path.join(root_dir, '.env')
+
+# Fallback to local .env if root doesn't exist (for backward compatibility)
+if not os.path.exists(env_path):
+    local_env_path = os.path.join(script_dir, '.env')
+    if os.path.exists(local_env_path):
+        env_path = local_env_path
+        print(f"Using local .env file: {env_path}")
+    else:
+        print(f"Warning: No .env file found in root ({os.path.join(root_dir, '.env')}) or local directory")
+
 load_dotenv(dotenv_path=env_path)
 
 console = Console()

@@ -10,19 +10,32 @@ from dotenv import load_dotenv
 
 def main():
     try:
-        # Load environment variables from the .env file in the same directory as this script
+        # Load environment variables from root .env file (or fallback to local)
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        env_path = os.path.join(script_dir, '.env')
+        root_dir = os.path.dirname(script_dir)  # Go up one level to root Agenix directory
+        root_env_path = os.path.join(root_dir, '.env')
         
-        # Load the .env file
-        load_dotenv(dotenv_path=env_path)
+        # Try root .env first, fallback to local for backward compatibility
+        if os.path.exists(root_env_path):
+            load_dotenv(dotenv_path=root_env_path)
+            print(f"Loaded environment from root .env: {root_env_path}")
+        else:
+            # Fallback to local .env file
+            local_env_path = os.path.join(script_dir, '.env')
+            if os.path.exists(local_env_path):
+                load_dotenv(dotenv_path=local_env_path)
+                print(f"Loaded environment from local .env: {local_env_path}")
+            else:
+                print("Error: No .env file found in root directory or blog folder")
+                print("Please create a .env file in the root Agenix directory")
+                sys.exit(1)
         
         # Check if GROQ_API_KEY is set
         api_key = os.getenv("GROQ_API_KEY")
         
         if not api_key:
             print("Error: GROQ_API_KEY not found in environment variables")
-            print("Please check your .env file in the blog folder")
+            print("Please check your .env file contains: GROQ_API_KEY=your_api_key_here")
             sys.exit(1)
         
         # Basic validation - check if it looks like a GROQ API key

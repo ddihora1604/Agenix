@@ -220,12 +220,26 @@ async function runBlogGenerator(scriptPath: string, topicFile: string, scriptDir
       path.join(scriptDir, 'venv', 'Scripts', 'python.exe') : 
       path.join(scriptDir, 'venv', 'bin', 'python');
     
-    // Load environment variables from blog's .env file
-    const envPath = path.join(scriptDir, '.env');
+    // Load environment variables from root .env file (with fallback to local)
+    const rootEnvPath = path.join(process.cwd(), '.env');
+    const localEnvPath = path.join(scriptDir, '.env');
     const envVars: { [key: string]: string | undefined } = { ...process.env };
     
     try {
       const fs = await import('fs');
+      let envPath = rootEnvPath;
+      
+      // Try root .env first, fallback to local
+      if (fs.existsSync(rootEnvPath)) {
+        envPath = rootEnvPath;
+        console.log('Blog Generator API: Using root .env file');
+      } else if (fs.existsSync(localEnvPath)) {
+        envPath = localEnvPath;
+        console.log('Blog Generator API: Using local .env file (fallback)');
+      } else {
+        console.warn('Blog Generator API: No .env file found in root or blog directory');
+      }
+      
       if (fs.existsSync(envPath)) {
         const envContent = fs.readFileSync(envPath, 'utf8');
         const envLines = envContent.split('\n');
@@ -239,12 +253,45 @@ async function runBlogGenerator(scriptPath: string, topicFile: string, scriptDir
             }
           }
         }
-        console.log('Blog Generator API: Loaded environment variables from .env file');
-      } else {
-        console.warn('Blog Generator API: .env file not found at', envPath);
+        console.log(`Blog Generator API: Loaded environment variables from ${envPath}`);
       }
     } catch (envError) {
       console.warn('Blog Generator API: Error loading .env file:', envError);
+    }
+
+    // Check if the API key is present in loaded environment variables
+    let apiKeyPresent = false;
+    const groqApiKey = envVars['GROQ_API_KEY'];
+    
+    // More specific check for valid API key
+    apiKeyPresent = !!(groqApiKey && 
+                      groqApiKey !== 'your-groq-api-key-here' &&
+                      groqApiKey !== '' &&
+                      groqApiKey.startsWith('gsk_') &&
+                      groqApiKey.length > 10);
+    
+    console.log('API key present:', apiKeyPresent);
+
+    if (!apiKeyPresent) {
+      console.error('Blog generator API: GROQ API key is missing or invalid');
+      // Add more detailed logging about the API key format
+      console.log('API key validation checks:');
+      console.log('- GROQ_API_KEY in envVars:', !!groqApiKey);
+      console.log('- Key format check (starts with gsk_):', groqApiKey ? groqApiKey.startsWith('gsk_') : false);
+      console.log('- Key length check (>10):', groqApiKey ? groqApiKey.length > 10 : false);
+      console.log('- Not default template:', groqApiKey !== 'your-groq-api-key-here');
+      
+      // Show masked key for security (only if it exists)
+      if (groqApiKey) {
+        const maskedKey = groqApiKey.length > 8 ? 
+          `${groqApiKey.substring(0, 4)}...${groqApiKey.substring(groqApiKey.length-4)}` : 
+          '***';
+        console.log('- Key format: ', maskedKey, `(length: ${groqApiKey.length})`);
+      } else {
+        console.log('- No GROQ_API_KEY found in environment variables');
+      }
+      
+      throw new Error('GROQ API key is missing or invalid. Please add a valid GROQ API key to the .env file in the root Agenix directory');
     }
     
     // Execute the script with the topic file as input and environment variables
@@ -303,59 +350,7 @@ export async function POST(req: NextRequest) {
     // Write topic to file
     fs.writeFileSync(topicFile, topic);
     console.log(`Topic written to: ${topicFile}`);
-    
-    // Check if the API key is present before running dependencies
-    const envFilePath = path.join(tempDir, '.env');
-    let apiKeyPresent = false;
-    let apiKeyContent = '';
-    
-    if (fs.existsSync(envFilePath)) {
-      const envContent = fs.readFileSync(envFilePath, 'utf8');
-      apiKeyContent = envContent;
-      
-      // More specific check for valid API key
-      apiKeyPresent = envContent.includes('GROQ_API_KEY=') && 
-                     !envContent.includes('GROQ_API_KEY=your-groq-api-key-here') &&
-                     !envContent.includes('GROQ_API_KEY=""') &&
-                     !envContent.includes('GROQ_API_KEY=\'\'') &&
-                     envContent.match(/GROQ_API_KEY=[\w\-]+/) !== null;
-    }
-    
-    console.log('API key present:', apiKeyPresent);
-    
-    if (!apiKeyPresent) {
-      console.error('Blog generator API: GROQ API key is missing or invalid');
-      // Add more detailed logging about the API key format
-      console.log('API key validation checks:');
-      if (fs.existsSync(envFilePath)) {
-        const envContent = fs.readFileSync(envFilePath, 'utf8');
-        console.log('- .env file exists: YES');
-        console.log('- Contains GROQ_API_KEY=: ', envContent.includes('GROQ_API_KEY='));
-        console.log('- Contains default template value: ', envContent.includes('GROQ_API_KEY=your-groq-api-key-here'));
-        console.log('- Contains empty value: ', 
-                    envContent.includes('GROQ_API_KEY=""') || 
-                    envContent.includes('GROQ_API_KEY=\'\''));
-        console.log('- Matches expected format: ', envContent.match(/GROQ_API_KEY=[\w\-]+/) !== null);
-        // Show masked key for security
-        const keyMatch = envContent.match(/GROQ_API_KEY=([\w\-]+)/);
-        if (keyMatch && keyMatch[1]) {
-          const key = keyMatch[1];
-          const maskedKey = key.length > 8 ? 
-            `${key.substring(0, 4)}...${key.substring(key.length-4)}` : 
-            '***';
-          console.log('- Key format: ', maskedKey, `(length: ${key.length})`);
-        }
-      } else {
-        console.log('- .env file exists: NO');
-      }
-      console.log('Current .env content:', apiKeyContent.replace(/GROQ_API_KEY=[\w\-]+/, 'GROQ_API_KEY=REDACTED'));
-      return NextResponse.json({ 
-        message: 'GROQ API key is missing or invalid', 
-        isApiKeyError: true,
-        details: 'Please add a valid GROQ API key to the .env file in the blog folder'
-      }, { status: 400 });
-    }
-    
+
     // Ensure Python dependencies are installed
     console.log('Ensuring Python dependencies');
     await ensurePythonDependencies(tempDir);

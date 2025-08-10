@@ -31,18 +31,27 @@ try:
 except ImportError:
     print("requests/BeautifulSoup not installed. Web URL processing will be limited.", file=sys.stderr)
 
-# Try to load environment variables from .env file
+# Try to load environment variables from root .env file
 try:
     from dotenv import load_dotenv
-    # Try looking for .env in the same directory as the script first
+    # Load from root Agenix directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(script_dir, '.env')
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
+    root_dir = os.path.dirname(script_dir)  # Go up one level to the root Agenix directory
+    env_path = os.path.join(root_dir, '.env')
+    
+    # Fallback to local .env if root doesn't exist
+    if not os.path.exists(env_path):
+        local_env_path = os.path.join(script_dir, '.env')
+        if os.path.exists(local_env_path):
+            env_path = local_env_path
+            print(f"Using local .env file: {env_path}", file=sys.stderr)
+        else:
+            # Fall back to current working directory
+            load_dotenv()
+            print("Loaded environment from current directory", file=sys.stderr)
     else:
-        # Fall back to the current working directory
-        load_dotenv()
-    print("Loaded environment from .env file", file=sys.stderr)
+        load_dotenv(env_path)
+        print(f"Loaded environment from root .env file: {env_path}", file=sys.stderr)
 except ImportError:
     print("python-dotenv not installed. Using system environment variables.", file=sys.stderr)
 except Exception as e:

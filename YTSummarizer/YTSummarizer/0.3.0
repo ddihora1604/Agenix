@@ -1,11 +1,8 @@
-Collecting youtube-transcript-api==0.6.1
-  Downloading youtube_transcript_api-0.6.1-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: youtube-transcript-api==0.6.1 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (0.6.1)
 Requirement already satisfied: google-generativeai in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (0.4.1)
-Collecting python-dotenv==1.0.0
-  Downloading python_dotenv-1.0.0-py3-none-any.whl.metadata (21 kB)
+Requirement already satisfied: python-dotenv==1.0.0 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (1.0.0)
 Requirement already satisfied: requests in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from youtube-transcript-api==0.6.1) (2.32.4)
-Collecting google-ai-generativelanguage==0.4.0 (from google-generativeai)
-  Downloading google_ai_generativelanguage-0.4.0-py3-none-any.whl.metadata (5.1 kB)
+Requirement already satisfied: google-ai-generativelanguage==0.4.0 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from google-generativeai) (0.4.0)
 Requirement already satisfied: google-auth>=2.15.0 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from google-generativeai) (2.40.3)
 Requirement already satisfied: google-api-core in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from google-generativeai) (2.25.1)
 Requirement already satisfied: protobuf in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from google-generativeai) (4.25.8)
@@ -28,18 +25,3 @@ Requirement already satisfied: annotated-types>=0.6.0 in c:\users\ddiho\appdata\
 Requirement already satisfied: pydantic-core==2.33.2 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from pydantic->google-generativeai) (2.33.2)
 Requirement already satisfied: typing-inspection>=0.4.0 in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from pydantic->google-generativeai) (0.4.1)
 Requirement already satisfied: colorama in c:\users\ddiho\appdata\local\programs\python\python311\lib\site-packages (from tqdm->google-generativeai) (0.4.6)
-Downloading youtube_transcript_api-0.6.1-py3-none-any.whl (24 kB)
-Downloading python_dotenv-1.0.0-py3-none-any.whl (19 kB)
-Downloading google_ai_generativelanguage-0.4.0-py3-none-any.whl (598 kB)
-   --------------------------------------- 598.7/598.7 kB 10.9 MB/s eta 0:00:00
-Installing collected packages: python-dotenv, youtube-transcript-api, google-ai-generativelanguage
-  Attempting uninstall: python-dotenv
-    Found existing installation: python-dotenv 1.1.1
-    Uninstalling python-dotenv-1.1.1:
-      Successfully uninstalled python-dotenv-1.1.1
-  Attempting uninstall: google-ai-generativelanguage
-    Found existing installation: google-ai-generativelanguage 0.6.18
-    Uninstalling google-ai-generativelanguage-0.6.18:
-      Successfully uninstalled google-ai-generativelanguage-0.6.18
-
-Successfully installed google-ai-generativelanguage-0.4.0 python-dotenv-1.0.0 youtube-transcript-api-0.6.1

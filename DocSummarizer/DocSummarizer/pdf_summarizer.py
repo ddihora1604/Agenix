@@ -14,8 +14,23 @@ from dotenv import load_dotenv
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from root .env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to the root Agenix directory
+env_path = os.path.join(root_dir, '.env')
+
+# Fallback to local .env if root doesn't exist
+if not os.path.exists(env_path):
+    # Try the DocSummarizer directory level first
+    doc_summarizer_env = os.path.join(os.path.dirname(script_dir), '.env')
+    if os.path.exists(doc_summarizer_env):
+        env_path = doc_summarizer_env
+        load_dotenv(dotenv_path=env_path)
+    else:
+        # Fall back to default behavior
+        load_dotenv()
+else:
+    load_dotenv(dotenv_path=env_path)
 
 # Set timeout values for API calls
 DEFAULT_API_TIMEOUT = 60  # seconds
@@ -249,10 +264,18 @@ def direct_summary_with_genai(pdf_path, summary_length="standard", focus_areas=N
             print(f"Error importing necessary packages: {e}", file=sys.stderr)
             return f"Error: Missing dependencies - {e}"
             
-        # Load environment variables if they exist
-        dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-        if os.path.exists(dotenv_path):
-            load_dotenv(dotenv_path)
+        # Load environment variables from root .env file (or fallback to local)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to root
+        root_env_path = os.path.join(root_dir, '.env')
+        
+        if os.path.exists(root_env_path):
+            load_dotenv(root_env_path)
+        else:
+            # Fallback to local .env
+            local_env_path = os.path.join(os.path.dirname(script_dir), '.env')
+            if os.path.exists(local_env_path):
+                load_dotenv(local_env_path)
             
         # Check for Google API Key
         api_key = os.getenv("GOOGLE_API_KEY")
